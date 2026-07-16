@@ -6,8 +6,8 @@ import Footer from '@/components/Footer';
 import BottomNav from '@/components/BottomNav';
 
 export const metadata: Metadata = {
-  title: 'KAPOOR — Boy Garments',
-  description: 'Premium men’s garments — shirts, tees, jeans, hoodies and co-ord sets.'
+  title: 'URBAN — Clothing Co',
+  description: 'Premium clothing — shirts, tees, jeans, hoodies and co-ord sets.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

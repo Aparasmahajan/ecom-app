@@ -43,8 +43,8 @@ export default function Header() {
     <header className="topbar">
       <div className="container topbar-inner">
         <Link href="/" className="logo" onClick={onLogoClick}>
-          <span className="brand-main">KAPOOR</span>
-          <span className="brand-sub">BOY GARMENTS</span>
+          <span className="brand-main">URBAN</span>
+          <span className="brand-sub">CLOTHING CO</span>
         </Link>
         <nav className="nav">
           <Link href="/">Home</Link>

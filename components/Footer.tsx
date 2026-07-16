@@ -45,8 +45,8 @@ export default function Footer() {
         onTouchStart={startPress}
         onTouchEnd={cancelPress}
       >
-        <div className="fb-main">KAPOOR</div>
-        <div className="fb-sub">BOY GARMENTS</div>
+        <div className="fb-main">URBAN</div>
+        <div className="fb-sub">CLOTHING CO</div>
       </div>
     </>
   );

@@ -15,7 +15,7 @@ export default function OffersPage() {
         <div>FLAT</div>
         <h2>20% OFF</h2>
         <div className="off-sub">ON ALL ORDERS</div>
-        <div className="promo-code">USE CODE: KB620</div>
+        <div className="promo-code">USE CODE: URBAN20</div>
       </div>
 
       <div className="offer-icons">

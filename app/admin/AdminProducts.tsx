@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '@/lib/context';
 import { K, get, set, uid, money } from '@/lib/storage';
 import { productRating } from '@/lib/helpers';
+import { productImages } from '@/lib/images';
 import type { Category, Product, Variant } from '@/lib/types';
 
 export default function AdminProducts() {
@@ -137,7 +138,7 @@ function ProductModal({
     if (!name.trim()) { toast('Name required'); return; }
     const images = imagesStr.trim()
       ? imagesStr.split(',').map(s => s.trim()).filter(Boolean)
-      : [`https://picsum.photos/seed/${uid()}/500/500`];
+      : productImages(categoryId, Math.floor(Math.random() * 5));
     const variants: Variant[] = variantsStr.split(',').map(s => {
       const [size, stock] = s.split(':').map(x => x?.trim());
       return {

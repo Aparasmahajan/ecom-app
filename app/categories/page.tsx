@@ -5,8 +5,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '@/lib/context';
 import { K, get } from '@/lib/storage';
 import type { Category } from '@/lib/types';
-
-const bgFor = (id: string) => `https://picsum.photos/seed/cat-${id}/700/400`;
+import { bannerImage } from '@/lib/images';
 
 export default function CategoriesPage() {
   const { ready } = useApp();
@@ -27,7 +26,7 @@ export default function CategoriesPage() {
             href={`/products?categoryId=${c.id}`}
             className="big-cat"
           >
-            <div className="bc-img" style={{ backgroundImage: `url(${bgFor(c.id)})` }} />
+            <div className="bc-img" style={{ backgroundImage: `url(${bannerImage(c.id)})` }} />
             <div className="bc-content">
               <div className="bc-name">{c.name}</div>
               <div className="bc-sub">Explore Now →</div>
