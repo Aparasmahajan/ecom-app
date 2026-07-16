@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/lib/context';
 import { K, get } from '@/lib/storage';
-import type { Product } from '@/lib/types';
+import type { Category, Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
 
 function ProductsView() {
@@ -12,47 +12,58 @@ function ProductsView() {
   const router = useRouter();
   const params = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
+  const [cats, setCats] = useState<Category[]>([]);
 
-  const gender = params.get('gender') || '';
-  const ageGroup = params.get('ageGroup') || '';
+  const categoryId = params.get('categoryId') || '';
   const q = (params.get('q') || '').toLowerCase();
 
   useEffect(() => {
     if (!ready) return;
     setProducts(get<Product[]>(K.PRODUCTS, []));
+    setCats(get<Category[]>(K.CATEGORIES, []));
   }, [ready]);
 
   const filtered = products.filter(p =>
-    (!gender || p.gender === gender || p.gender === 'UNISEX') &&
-    (!ageGroup || p.ageGroup === ageGroup) &&
+    (!categoryId || p.categoryId === categoryId) &&
     (!q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
   );
 
-  const update = (nextG: string, nextA: string) => {
-    const qs = new URLSearchParams();
-    if (nextG) qs.set('gender', nextG);
-    if (nextA) qs.set('ageGroup', nextA);
-    router.push('/products' + (qs.toString() ? '?' + qs.toString() : ''));
+  const setCat = (id: string) => {
+    router.push(id ? `/products?categoryId=${id}` : '/products');
   };
+
+  const currentCat = cats.find(c => c.id === categoryId);
 
   return (
     <>
-      <div className="filters">
-        <select value={gender} onChange={(e) => update(e.target.value, ageGroup)}>
-          <option value="">All Genders</option>
-          <option value="MEN">Men</option>
-          <option value="WOMEN">Women</option>
-          <option value="UNISEX">Unisex</option>
-        </select>
-        <select value={ageGroup} onChange={(e) => update(gender, e.target.value)}>
-          <option value="">All Ages</option>
-          <option value="KIDS">Kids</option>
-          <option value="TEEN">Teens</option>
-          <option value="ADULT">Adults</option>
-        </select>
-        {q && <span>Search: <strong>{q}</strong></span>}
-        <button className="btn small secondary" onClick={() => router.push('/products')}>Clear</button>
+      <h2 style={{ marginBottom: 14, letterSpacing: 1 }}>
+        {currentCat ? currentCat.name.toUpperCase() : 'ALL PRODUCTS'}
+      </h2>
+
+      <div className="tab-chips">
+        <button
+          className={`tab-chip ${!categoryId ? 'active' : ''}`}
+          onClick={() => setCat('')}
+        >
+          All
+        </button>
+        {cats.map(c => (
+          <button
+            key={c.id}
+            className={`tab-chip ${categoryId === c.id ? 'active' : ''}`}
+            onClick={() => setCat(c.id)}
+          >
+            {c.name}
+          </button>
+        ))}
       </div>
+
+      {q && (
+        <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 12 }}>
+          Search: <strong style={{ color: 'var(--text)' }}>{q}</strong>
+        </div>
+      )}
+
       {filtered.length ? (
         <div className="grid">
           {filtered.map(p => <ProductCard key={p.id} product={p} />)}

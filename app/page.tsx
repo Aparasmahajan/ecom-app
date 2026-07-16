@@ -6,6 +6,7 @@ import { useApp } from '@/lib/context';
 import { K, get } from '@/lib/storage';
 import type { Category, Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
+import { HERO_IMAGE, chipImage } from '@/lib/images';
 
 export default function HomePage() {
   const { ready } = useApp();
@@ -18,42 +19,60 @@ export default function HomePage() {
     setCats(get<Category[]>(K.CATEGORIES, []));
   }, [ready]);
 
-  const hot = products.filter(p => p.isHotSeller);
+  const hot = products.filter(p => p.isHotSeller).slice(0, 6);
+  const arrivals = products.slice().reverse().slice(0, 8);
 
   return (
     <>
       <div className="hero">
-        <div>
-          <h1>Custom Clothing, Made For You</h1>
-          <p>Hand-crafted apparel with your fit, your style.</p>
-          <Link href="/products" className="btn secondary">Shop Now</Link>
+        <div
+          className="hero-img"
+          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
+        />
+        <div className="hero-content">
+          <h1>NEW<br />SEASON<br />COLLECTION</h1>
+          <p>Elevate Your Style</p>
+          <Link href="/products" className="btn">SHOP NOW</Link>
         </div>
       </div>
 
-      <div className="section-title"><h2>Shop by Category</h2></div>
-      <div className="cat-grid">
+      <div className="chip-row">
         {cats.map(c => (
           <Link
             key={c.id}
-            href={`/products?gender=${c.gender}&ageGroup=${c.ageGroup}`}
-            className="cat-card"
+            href={`/products?categoryId=${c.id}`}
+            className="chip"
           >
-            <div className="emoji">{c.emoji}</div>
-            <div className="name">{c.name}</div>
+            <div className="chip-img">
+              <img src={chipImage(c.id)} alt={c.name} />
+            </div>
+            <div className="chip-name">{c.name}</div>
           </Link>
         ))}
       </div>
 
       <div className="section-title">
-        <h2>Hot Sellers 🔥</h2>
-        <Link href="/products">View all</Link>
+        <h2>Trending Now</h2>
+        <Link href="/products">View All</Link>
       </div>
       {hot.length ? (
         <div className="grid">
           {hot.map(p => <ProductCard key={p.id} product={p} />)}
         </div>
       ) : (
-        <p className="empty">No hot sellers yet.</p>
+        <p className="empty">No trending items yet.</p>
+      )}
+
+      <div className="section-title">
+        <h2>New Arrivals</h2>
+        <Link href="/products">View All</Link>
+      </div>
+      {arrivals.length ? (
+        <div className="grid">
+          {arrivals.map(p => <ProductCard key={p.id} product={p} />)}
+        </div>
+      ) : (
+        <p className="empty">No arrivals yet.</p>
       )}
     </>
   );

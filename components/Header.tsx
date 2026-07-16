@@ -43,15 +43,17 @@ export default function Header() {
     <header className="topbar">
       <div className="container topbar-inner">
         <Link href="/" className="logo" onClick={onLogoClick}>
-          Custom<span>Wear</span>
+          <span className="brand-main">KAPOOR</span>
+          <span className="brand-sub">BOY GARMENTS</span>
         </Link>
         <nav className="nav">
           <Link href="/">Home</Link>
+          <Link href="/categories">Categories</Link>
           <Link href="/products">Shop</Link>
+          <Link href="/offers">Offers</Link>
           <Link href="/wishlist">Wishlist <span className="badge">{wishCount}</span></Link>
           <Link href="/cart">Cart <span className="badge">{cartCount}</span></Link>
           <Link href="/orders">Orders</Link>
-          <Link href="/profile">Profile</Link>
           <a href="#" onClick={(e) => { e.preventDefault(); handleAuth(); }}>
             {user ? 'Sign out' : 'Sign in'}
           </a>

@@ -1,21 +1,21 @@
 import { K, get, set, uid } from './storage';
+import { productImages } from './images';
 import type { Category, Product, User } from './types';
 
-const img = (s: string) => `https://picsum.photos/seed/${s}/500/500`;
-
 function mkProduct(
-  name: string, desc: string, categoryId: string,
-  gender: Product['gender'], ageGroup: Product['ageGroup'],
-  price: number, hot: boolean, seedStr: string, sizes: string[]
+  categoryId: string, catIndex: number,
+  name: string, desc: string,
+  price: number, hot: boolean, sizes: string[]
 ): Product {
   return {
-    id: uid(), name, description: desc, categoryId, gender, ageGroup,
+    id: uid(), name, description: desc, categoryId,
+    gender: 'UNISEX', ageGroup: 'ADULT',
     basePrice: price,
-    images: [img(seedStr), img(seedStr + 'a'), img(seedStr + 'b')],
+    images: productImages(categoryId, catIndex),
     isHotSeller: hot,
     adminRatingOverride: null,
     variants: sizes.map(s => ({
-      id: uid(), size: s, color: 'Default', stock: 20, priceModifier: 0
+      id: uid(), size: s, color: 'Black', stock: 20, priceModifier: 0
     }))
   };
 }
@@ -23,31 +23,52 @@ function mkProduct(
 export function seed(): void {
   if (get(K.SEEDED, false)) return;
 
-  const users: User[] = [{
-    id: uid(), email: 'admin@shop.com', password: 'admin123',
-    name: 'Shop Admin', phone: '9999999999', role: 'ADMIN'
-  }];
+  // Preserve existing customer accounts; ensure the admin exists.
+  const existing = get<User[]>(K.USERS, []);
+  const users: User[] = existing.length ? existing.slice() : [];
+  if (!users.some(u => u.email === 'admin@shop.com')) {
+    users.push({
+      id: uid(), email: 'admin@shop.com', password: 'admin123',
+      name: 'Shop Admin', phone: '9999999999', role: 'ADMIN'
+    });
+  }
   set(K.USERS, users);
 
   const categories: Category[] = [
-    { id: 'c1', name: 'Men', gender: 'MEN', ageGroup: 'ADULT', emoji: '👔' },
-    { id: 'c2', name: 'Women', gender: 'WOMEN', ageGroup: 'ADULT', emoji: '👗' },
-    { id: 'c3', name: 'Kids', gender: 'UNISEX', ageGroup: 'KIDS', emoji: '🧒' },
-    { id: 'c4', name: 'Teens', gender: 'UNISEX', ageGroup: 'TEEN', emoji: '🎒' }
+    { id: 'shirts',   name: 'Shirts',       gender: 'UNISEX', ageGroup: 'ADULT', emoji: '👔' },
+    { id: 'tshirts',  name: 'T-Shirts',     gender: 'UNISEX', ageGroup: 'ADULT', emoji: '👕' },
+    { id: 'jeans',    name: 'Jeans',        gender: 'UNISEX', ageGroup: 'ADULT', emoji: '👖' },
+    { id: 'hoodies',  name: 'Hoodies',      gender: 'UNISEX', ageGroup: 'ADULT', emoji: '🧥' },
+    { id: 'coords',   name: 'Co-ord Sets',  gender: 'UNISEX', ageGroup: 'ADULT', emoji: '🕴️' }
   ];
   set(K.CATEGORIES, categories);
 
   const products: Product[] = [
-    mkProduct('Classic Cotton Shirt', 'Hand-stitched premium cotton shirt, tailored fit.', 'c1', 'MEN', 'ADULT', 1499, true, 'shirt1', ['S','M','L','XL']),
-    mkProduct('Linen Kurta', 'Breathable linen kurta with custom embroidery.', 'c1', 'MEN', 'ADULT', 2199, true, 'kurta1', ['M','L','XL','XXL']),
-    mkProduct('Formal Trousers', 'Slim-fit formal trousers with pleated finish.', 'c1', 'MEN', 'ADULT', 1799, false, 'trouser1', ['30','32','34','36']),
-    mkProduct('Silk Saree', 'Handwoven silk saree with zari border.', 'c2', 'WOMEN', 'ADULT', 4999, true, 'saree1', ['Free']),
-    mkProduct('Anarkali Dress', 'Elegant anarkali dress with detailed threadwork.', 'c2', 'WOMEN', 'ADULT', 3499, true, 'dress1', ['S','M','L','XL']),
-    mkProduct('Cotton Kurti', 'Everyday cotton kurti, custom-fitted.', 'c2', 'WOMEN', 'ADULT', 899, false, 'kurti1', ['S','M','L','XL']),
-    mkProduct('Kids Party Frock', 'Colorful frock for special occasions.', 'c3', 'UNISEX', 'KIDS', 999, true, 'frock1', ['2-3Y','4-5Y','6-7Y']),
-    mkProduct('School Uniform Set', 'Durable uniform set with custom sizing.', 'c3', 'UNISEX', 'KIDS', 1299, false, 'uniform1', ['5-6Y','7-8Y','9-10Y']),
-    mkProduct('Teen Denim Jacket', 'Trendy denim jacket for teens.', 'c4', 'UNISEX', 'TEEN', 1899, true, 'jacket1', ['S','M','L']),
-    mkProduct('Streetwear Hoodie', 'Comfortable oversized hoodie.', 'c4', 'UNISEX', 'TEEN', 1599, false, 'hoodie1', ['S','M','L','XL'])
+    // Shirts
+    mkProduct('shirts',  0, 'Oversized Shirt',       'Premium oversized shirt with a relaxed fit and tailored finish.', 999,  true,  ['S','M','L','XL']),
+    mkProduct('shirts',  1, 'Denim Overshirt',       'Rugged denim overshirt — layer over anything.',                   1199, true,  ['M','L','XL','XXL']),
+    mkProduct('shirts',  2, 'Linen Casual Shirt',    'Breathable linen shirt in a modern relaxed cut.',                 1099, false, ['S','M','L','XL']),
+
+    // T-Shirts
+    mkProduct('tshirts', 0, 'Classic White Tee',     'Everyday essential — soft cotton white tee.',                     599,  true,  ['S','M','L','XL','XXL']),
+    mkProduct('tshirts', 1, 'Minimal Printed Tee',   'Minimal printed t-shirt in super-soft cotton.',                   749,  true,  ['S','M','L','XL']),
+    mkProduct('tshirts', 2, 'Dark Graphic Tee',      'Premium graphic tee, back-print statement piece.',                799,  true,  ['S','M','L','XL','XXL']),
+    mkProduct('tshirts', 3, 'Washed Oversized Tee',  'Washed finish, oversized silhouette, ultra-comfort.',             849,  true,  ['S','M','L','XL','XXL']),
+    mkProduct('tshirts', 4, 'Chaotic Back Print',    'Premium cotton oversized tee with high-quality back print.',      899,  false, ['S','M','L','XL']),
+
+    // Jeans
+    mkProduct('jeans',   0, 'Baggy Jeans',           'Trending baggy fit denim with a clean wash.',                     1299, true,  ['30','32','34','36']),
+    mkProduct('jeans',   1, 'Slim Fit Jeans',        'Classic slim-fit jeans in stretch denim.',                        1099, false, ['30','32','34','36']),
+    mkProduct('jeans',   2, 'Distressed Denim',      'Rugged distressed denim, statement piece.',                       1499, false, ['30','32','34','36']),
+
+    // Hoodies
+    mkProduct('hoodies', 0, 'Classic Grey Hoodie',   'Heavy-weight hoodie with brushed fleece lining.',                 1599, true,  ['S','M','L','XL','XXL']),
+    mkProduct('hoodies', 1, 'Streetwear Hoodie',     'Oversized streetwear hoodie with statement print.',               1699, true,  ['S','M','L','XL','XXL']),
+    mkProduct('hoodies', 2, 'Zip-up Hoodie',         'Everyday zip-up hoodie in ultra-soft cotton.',                    1799, false, ['S','M','L','XL']),
+
+    // Co-ords
+    mkProduct('coords',  0, 'Beige Co-ord Set',      'Premium coordinated set — shirt + trousers in beige.',            2499, true,  ['S','M','L','XL']),
+    mkProduct('coords',  1, 'Neutral Co-ord Set',    'Neutral-tone co-ord set with tailored finish.',                   2699, false, ['S','M','L','XL'])
   ];
   set(K.PRODUCTS, products);
   set(K.SEEDED, true);

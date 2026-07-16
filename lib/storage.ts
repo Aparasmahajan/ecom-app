@@ -8,7 +8,7 @@ export const K = {
   ORDERS: 'cw_orders',
   ADDRS: 'cw_addrs',
   REVIEWS: 'cw_reviews',
-  SEEDED: 'cw_seeded_v1'
+  SEEDED: 'cw_seeded_v3'
 };
 
 export function get<T>(key: string, fallback: T): T {
