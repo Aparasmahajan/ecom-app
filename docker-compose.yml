@@ -4,7 +4,10 @@ version: "3.9"
 # URBAN Clothing Co — full stack
 #   db      : PostgreSQL 16 with pg_trgm enabled by Flyway
 #   backend : Spring Boot 3 (Java 17) REST API
-#   web     : Next.js 14 static frontend
+#   web     : Next.js 14 (ecom-app-web/) — currently deployed as a
+#             backend-less static site, so it is NOT part of the compose stack.
+#             The commented block below is retained for reference in case you
+#             ever want to serve it from the same host as the backend.
 # ------------------------------------------------------------------
 services:
   db:
@@ -57,7 +60,7 @@ services:
 
   # web:
   #   build:
-  #     context: ./static
+  #     context: ./ecom-app-web
   #     dockerfile: Dockerfile
   #   container_name: urban-web
   #   restart: unless-stopped
