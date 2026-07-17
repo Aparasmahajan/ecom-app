@@ -25,12 +25,20 @@ public class OtpToken {
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
 
+    @Builder.Default
     @Column(nullable = false)
     private int attempts = 0;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean verified = false;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) createdAt = OffsetDateTime.now();
+    }
 }

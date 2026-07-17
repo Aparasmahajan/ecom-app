@@ -159,6 +159,10 @@ Auth model: everything under `/admin/**` requires role `ADMIN` **or** `SUPER_ADM
 # Auth (public)
 POST /auth/otp/request      { email }                              -> sends OTP via Brevo (dev: logs to backend console)
 POST /auth/otp/verify       { email, otp }                         -> { token, user }  (auto-creates USER on first verify)
+POST /auth/register         { email, password(>=8), name, phone? } -> { token, user }  (creates USER; 400 if email already registered; auto-login)
+POST /auth/login            { email, password }                    -> { token, user }  (password login; email must be registered + have a password)
+POST /auth/password/forgot  { email }                              -> sends reset OTP — 400 if email not registered
+POST /auth/password/reset   { email, otp, newPassword(>=8) }       -> { status: "reset" }  (verifies OTP, sets new password)
 POST /auth/admin/login      { username, password }                 -> { token, user }  (ADMIN or SUPER_ADMIN, no OTP)
 
 # Health (public)
@@ -247,15 +251,19 @@ All errors return `{ code, message }` (HTTP 4xx/5xx). See `GlobalExceptionHandle
 
 ### Users
 - **Login required to place an order** (no guest checkout). Browsing, search, and viewing products are open; cart → checkout requires a logged-in user.
-- Login/signup via **email OTP** (Brevo). Store only an OTP hash + expiry (10 min, configurable via `app.otp.ttl-minutes`). Max 5 attempts per OTP. Rate-limit OTP requests per email to protect the free quota.
-- First successful OTP verify auto-creates a `USER` row (name defaults to the email local-part) — no separate signup step.
+- Two login methods for `USER`:
+  1. **Email OTP** (`/auth/otp/request` → `/auth/otp/verify`) — passwordless. First successful verify auto-creates a `USER` row (name defaults to the email local-part) — no separate signup step.
+  2. **Email + password** (`/auth/register` then `/auth/login`) — `register` creates a `USER` with a bcrypt password and rejects an already-registered email (each address is registered exactly once); `login` requires the email to be registered **and** to have a password set. OTP-only accounts have no password until they set one via the reset flow.
+- **Forgot / reset password via OTP**: `/auth/password/forgot` sends a reset OTP but **only to a registered email** (400 otherwise); `/auth/password/reset` verifies the OTP and sets the new password. Reuses the same OTP-token table + limits as OTP login.
+- OTP storage: only an OTP hash + expiry (10 min, configurable via `app.otp.ttl-minutes`). Max 5 attempts per OTP. Rate-limit OTP requests per email to protect the free quota.
+- Password rules: minimum 8 chars, stored as bcrypt (same encoder as admin passwords). Generic "invalid credentials" on login failure — no user enumeration.
 - JWT lifetime is 24 h by default (`JWT_EXPIRY_MINUTES=1440`).
 
 ### Role hierarchy — `USER` < `ADMIN` < `SUPER_ADMIN`
 
 | Role | How they log in | What they can do |
 |---|---|---|
-| `USER` | Email OTP (`/auth/otp/verify`) | Browse, buy, review, manage own cart / wishlist / addresses / orders |
+| `USER` | Email OTP (`/auth/otp/verify`) **or** email + password (`/auth/register` → `/auth/login`); reset via OTP (`/auth/password/forgot` → `/auth/password/reset`) | Browse, buy, review, manage own cart / wishlist / addresses / orders |
 | `ADMIN` | Email + password (`/auth/admin/login`) | Everything under `/admin/**` except `/admin/admins/**` — catalog CRUD, hot seller, rating override, orders (status, tracking, notes, cancel, refund), image uploads |
 | `SUPER_ADMIN` | Same as ADMIN | Everything ADMIN can do **plus** `/admin/admins/**` — create / disable / delete / password-reset other admins |
 

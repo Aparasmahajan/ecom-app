@@ -122,6 +122,14 @@ export const api = {
     requestOtp: (email: string) => request<{ status: string }>('POST', '/auth/otp/request', { email }),
     verifyOtp:  (email: string, otp: string) =>
       request<{ token: string; user: User }>('POST', '/auth/otp/verify', { email, otp }),
+    register: (body: { email: string; password: string; name: string; phone?: string }) =>
+      request<{ token: string; user: User }>('POST', '/auth/register', body),
+    login: (email: string, password: string) =>
+      request<{ token: string; user: User }>('POST', '/auth/login', { email, password }),
+    forgotPassword: (email: string) =>
+      request<{ status: string }>('POST', '/auth/password/forgot', { email }),
+    resetPassword: (email: string, otp: string, newPassword: string) =>
+      request<{ status: string }>('POST', '/auth/password/reset', { email, otp, newPassword }),
     adminLogin: (username: string, password: string) =>
       request<{ token: string; user: User }>('POST', '/auth/admin/login', { username, password })
   },
