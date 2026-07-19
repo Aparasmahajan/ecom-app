@@ -3,9 +3,10 @@ import { View, Text, Image, ScrollView, Pressable, StyleSheet, ImageBackground, 
 import { useNavigation } from '@react-navigation/native';
 import Screen from '../components/Screen';
 import ProductCard from '../components/ProductCard';
+import ComboCard from '../components/ComboCard';
 import Brand from '../components/Brand';
 import Button from '../components/Button';
-import { api, Category, Product } from '../lib/api';
+import { api, Category, Combo, Product } from '../lib/api';
 import { HERO_IMAGE, chipImage } from '../lib/images';
 import { colors, radii } from '../theme';
 
@@ -13,14 +14,20 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const [products, setProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
+  const [combos, setCombos] = useState<Combo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [ps, cs] = await Promise.all([api.catalog.products({}), api.catalog.categories()]);
+        const [ps, cs, kb] = await Promise.all([
+          api.catalog.products({}),
+          api.catalog.categories(),
+          api.catalog.combos()
+        ]);
         setProducts(ps);
         setCats(cs);
+        setCombos(kb);
       } catch {
         // Backend unreachable — screen shows empty state.
       } finally { setLoading(false); }
@@ -69,6 +76,13 @@ export default function HomeScreen() {
           <View key={p.id} style={styles.gridItem}><ProductCard product={p} /></View>
         ))}
       </View>
+
+      {combos.length > 0 && (
+        <>
+          <SectionTitle title="Curated Combos" />
+          {combos.map(c => <ComboCard key={c.id} combo={c} />)}
+        </>
+      )}
     </Screen>
   );
 }

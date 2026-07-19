@@ -10,16 +10,30 @@ A cross-platform e-commerce shop for **URBAN CLOTHING CO** — a generic clothin
 
 **Platforms:** Android + iOS (React Native / Expo) **and** the web storefront (Next.js). Both talk to the same Spring Boot REST API.
 
-**Repository layout**
+**Repository layout — two independent deployables share the design system**
 ```
 ecom-app/
-├── docker-compose.yml     boots db + backend + web
+├── docker-compose.yml     boots db + backend (web is intentionally NOT in compose)
 ├── .env.example
-├── backend/               Spring Boot 3 REST API (Java 17)
-├── static/                Next.js 14 web storefront + admin
-└── mobile/                Expo React Native app
+├── backend/               Spring Boot 3 REST API (Java 17) — powers the mobile app
+├── ecom-app-web/          Next.js 14 STATIC storefront + admin — self-contained (no backend)
+└── mobile/                Expo React Native app — full end-to-end against the backend
 ```
-Run the entire stack with `docker compose up --build`. See top-level [README.md](README.md) for details.
+
+**Two-track architecture (important, locked)**
+
+| Track | What it is | Data source |
+|---|---|---|
+| **ecom-app-web** | The public marketing / demo site. Every feature (customer + admin) runs entirely in `localStorage`. Deployable as a plain static site to Vercel / Netlify / GitHub Pages / any CDN — no server needed. | Browser localStorage (see `ecom-app-web/lib/api.ts` — same TS surface as the backend client, backed by localStorage) |
+| **mobile + backend** | The real end-to-end production stack. Mobile app talks to the Spring Boot API which persists to PostgreSQL. All customer + admin data is real, per-user, durable. | Backend REST API → PostgreSQL |
+
+The two tracks are intentionally **not synced** with each other:
+- The static web has its own seeded catalog + combos + admin (all in the visitor's browser).
+- The mobile app + backend has its own catalog + combos + admin (in the DB).
+- Admin edits made in the web demo never touch the real backend, and vice versa.
+- The frontend TypeScript client (`api` object) has an **identical shape** in both places — `ecom-app-web/lib/api.ts` and `mobile/src/lib/api.ts`. You can swap one for the other and every screen keeps working.
+
+Run the backend + DB with `docker compose up --build`. Deploy `ecom-app-web` as a static build with `cd ecom-app-web && npm run build && npm start` (or push to Vercel/Netlify). See top-level [README.md](README.md) for details.
 
 **"Custom order" scope (confirmed):** the shop takes custom clothing orders, but customization on the app is limited to **choosing an admin-listed size + quantity + an optional free-text note**. There are **no** customer body-measurement forms and **no** customer image/reference uploads. (This keeps the data model simple and means Cloudinary is used for admin product images only.)
 
@@ -77,12 +91,15 @@ Run the entire stack with `docker compose up --build`. See top-level [README.md]
 - Auth — email → 6-digit OTP → JWT
 - **No admin panel** — admin is web-only. The mobile app never exposes an admin login.
 
-**Screen map (web — customer + admin)**
+**Screen map (web — customer + admin) — all runs in localStorage, no backend**
 - All customer screens above (as pages under `/`, `/products`, `/cart`, `/orders`, etc.)
-- **Hidden admin entry**: long-press the version number in the footer for 1.5s, or triple-click the logo → `/admin/login`
-- **Admin panel** at `/admin` — three tabs:
+- **Home + Categories** each end with a **"Curated Combos"** footer section (see §18) listing all currently-active combos.
+- **Hidden admin entry**: long-press the version number in the footer for 1.5s, or triple-click the logo → `/admin/login`.
+- **Admin panel** at `/admin` — five tabs:
   - **Orders** — search / filter by status / sort / open detail drawer / change status / add tracking / add admin notes / cancel / refund
   - **Products** — CRUD, toggle hot seller, override rating
+  - **Inventory** — flat variant × stock table with in-place stock edit, low-stock / out-of-stock filters, search (see §19)
+  - **Combos** — CRUD curated bundles (name, image, product picker, combo price, active toggle) (see §18)
   - **Admins** — SUPER_ADMIN only: create / list / enable-disable / reset-password / delete admin accounts
 
 ---
@@ -314,7 +331,7 @@ All three integrations are **optional** — if the corresponding env vars are em
 - **Dev fallback**: when `RAZORPAY_KEY_ID` is empty, `RazorpayService.createOrder` returns a mock `order_dev_…` id and `verifySignature` is skipped. The mobile app + web checkout post `signature: "dev"` and get back a PAID order — end-to-end works without a Razorpay account.
 
 **Seed data (Unsplash product photos)**
-- The V2 Flyway migration seeds 5 categories + 15 products with **real clothing photos** from `images.unsplash.com`. Same photo pool is mirrored in `static/lib/images.ts` and `mobile/src/lib/images.ts` so the same product looks identical across all three surfaces. Never use random placeholder services (picsum, placeholder.com) for user-visible art.
+- The V2 Flyway migration seeds 5 categories + 15 products with **real clothing photos** from `images.unsplash.com`. Same photo pool is mirrored in `ecom-app-web/lib/images.ts` and `mobile/src/lib/images.ts` so the same product looks identical across all three surfaces. Never use random placeholder services (picsum, placeholder.com) for user-visible art.
 
 ---
 
@@ -473,7 +490,7 @@ Never use pure black (`#000`) — use `--bg`. Never use a second accent color; a
 - Keep motion subtle and short — no bouncing, no long transitions.
 
 ### 12.9 Admin panel — responsive orders
-The admin orders page (`static/app/admin/AdminOrders.tsx`) must be responsive:
+The admin orders page (`ecom-app-web/app/admin/AdminOrders.tsx`) must be responsive:
 - **Desktop / tablet (>768px)**: proper 7-column `<table>` — Order (+ tracking sub-line), Customer (name + email), Items, Total, Status, Payment, Placed.
 - **Mobile (≤768px)**: table hides; a stack of `.ao-card` cards renders instead. Each card shows order id + total on top row, customer + status pill middle, items + timestamp bottom.
 - Both variants open the same **detail drawer** (`.ao-modal`) with: status pipeline buttons (Mark next / Cancel / Refund), status dropdown, customer info, shipping snapshot, tracking input, cancel/refund reason input, item list, payment ids, admin notes textarea.
@@ -555,7 +572,7 @@ The web and mobile apps talk to the backend through a **thin, typed `fetch` wrap
 
 | File | Notes |
 |---|---|
-| [`static/lib/api.ts`](static/lib/api.ts)   | JWT persisted in `localStorage` (key `cw_token`). Reads `NEXT_PUBLIC_API_BASE_URL`, defaults to `http://localhost:8080`. |
+| [`ecom-app-web/lib/api.ts`](ecom-app-web/lib/api.ts)   | JWT persisted in `localStorage` (key `cw_token`). Reads `NEXT_PUBLIC_API_BASE_URL`, defaults to `http://localhost:8080`. |
 | [`mobile/src/lib/api.ts`](mobile/src/lib/api.ts) | JWT persisted in `AsyncStorage`. **Auto-detects** the dev host from Metro's `Constants.expoConfig.hostUri` so Expo Go on a physical phone reaches the backend on the PC over LAN without config. |
 
 Both expose exactly one shape:
@@ -577,7 +594,7 @@ api.admin.admins.{ list, create, resetPassword, setEnabled, remove }   // web on
 Errors are thrown as `ApiError { status, code, message }` so any UI can render `err.message` directly.
 
 State layer:
-- **Web**: `static/lib/context.tsx` — a React context provider that hydrates `user` via `GET /me` and `{cartCount, wishCount}` via `GET /cart` + `GET /wishlist` on mount and after any mutation.
+- **Web**: `ecom-app-web/lib/context.tsx` — a React context provider that hydrates `user` via `GET /me` and `{cartCount, wishCount}` via `GET /cart` + `GET /wishlist` on mount and after any mutation.
 - **Mobile**: `mobile/src/state/store.ts` — Zustand store with the same `{user, cartCount, wishCount, refresh, signIn, signOut}` surface.
 
 Nothing else in the frontends touches persistence directly. All the old localStorage / AsyncStorage helpers were deleted when the migration completed.
@@ -616,4 +633,62 @@ The whole stack must run **without any third-party accounts**. Each optional int
 
 Frontends are aware of this — the web checkout and mobile cart send `signature: "dev"` so the flow completes end-to-end. When real Razorpay creds are supplied, the same code path performs real HMAC-SHA256 verification.
 
-**Reset the database** (e.g. after changing seeded creds or bumping a migration): `docker compose down -v` deletes the `db_data` volume; the next `docker compose up --build` reruns V1..V4 and reseeds SUPER_ADMIN + catalog fresh.
+**Reset the database** (e.g. after changing seeded creds or bumping a migration): `docker compose down -v` deletes the `db_data` volume; the next `docker compose up --build` reruns V1..V5 and reseeds SUPER_ADMIN + catalog + combos fresh.
+
+---
+
+## 18. Combos (curated bundles)
+
+A **combo** is an admin-curated bundle of ≥2 products sold at a discounted total price. Combos are shown as their own **"Curated Combos"** section at the bottom of the Home screen and the Categories screen — on both surfaces.
+
+### 18.1 Data model
+- `combos` table (V5 migration): `id, name, description, image, combo_price, is_active, created_at, updated_at`.
+- `combo_products` join table: `(combo_id, product_id, position)` — many products per combo, product can be in many combos.
+- V5 also seeds three sample combos wired to the V2 product seed:
+  - Streetwear Starter (tee + baggy jeans + hoodie)
+  - Formal Complete (shirt + slim-fit jeans)
+  - Weekend Chill (white tee + grey hoodie)
+
+### 18.2 API surface
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/combos`         | public | List active combos (storefront) |
+| GET | `/combos/{id}`    | public | Combo detail |
+| GET | `/admin/combos`   | ADMIN  | List **all** combos including hidden |
+| POST | `/admin/combos`  | ADMIN  | Create — must contain ≥2 products |
+| PUT | `/admin/combos/{id}` | ADMIN | Update |
+| DELETE | `/admin/combos/{id}` | ADMIN | Delete |
+
+Mobile calls these via `api.catalog.combos()`; the static web calls the same TS surface backed by localStorage in `ecom-app-web/lib/api.ts`.
+
+### 18.3 Admin UI
+`ecom-app-web/app/admin/AdminCombos.tsx` — the Combos tab:
+- Table lists every combo with the list-price total and how much the combo saves.
+- Row actions: **Show / Hide** (toggle `isActive`), **Edit**, **Delete**.
+- Modal for create/edit picks products via checkbox list, enforces ≥2 products, live-computes the "saves ₹X" hint.
+
+### 18.4 Combo card (storefront)
+`ecom-app-web/components/ComboCard.tsx` and `mobile/src/components/ComboCard.tsx` share the visual language: dark backdrop image with a gradient overlay, a small gold **N-PIECE COMBO** pill, name + short description, gold price + "Shop combo →" CTA. Both live at the bottom of Home + Categories as a grid (web) / vertical stack (mobile).
+
+---
+
+## 19. Inventory Management
+
+Admins can manage stock at the **variant** level from a dedicated **Inventory** tab in the admin panel.
+
+### 19.1 API surface
+- The underlying operation reuses the existing `PUT /admin/variants/{id}` endpoint from §5 — inventory is just variant.stock.
+- In `ecom-app-web/lib/api.ts` the same surface is exposed as `api.admin.inventory.list()` and `api.admin.inventory.updateStock(variantId, stock)` for convenience — internally it walks every product's variant list.
+
+### 19.2 UI (`ecom-app-web/app/admin/AdminInventory.tsx`)
+- Flat table: **Product · Size · Color · Price · Stock · Update**.
+- One row per variant. Product image + name on the left; stock displayed as a colored pill:
+  - `≥6` → green (`status-DELIVERED`)
+  - `1–5` → gold (`status-PROCESSING`) — **low-stock threshold is 5**
+  - `0`  → red (`status-CANCELLED`) — out of stock
+- Each row has −/+ steppers and a numeric input for stock, plus a **Save** button that only enables when the value is dirty. Saving calls `api.admin.inventory.updateStock`.
+- Toolbar filters: **All / Low stock / Out of stock** (with counts), and a search box across product name / size / color.
+
+### 19.3 Where stock is decremented automatically
+- On `POST /orders` — every ordered variant's stock is reduced by the ordered quantity, inside the same transaction that creates the order. Overselling is guarded by a `stock >= quantity` pre-check that returns a 400 with the product name if it fails.
+- Refunds do **not** automatically restock (admin decision — restock manually via Inventory if needed).
