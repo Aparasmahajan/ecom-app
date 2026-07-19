@@ -1,0 +1,15 @@
+cp .env.example .env
+docker compose up --build
+
+
+cd "C:\Users\parmahaj\Documents\New folder\ecom-app\mobile"
+npx expo start
+
+docker compose up -d --build backend
+or explicitly:
+
+docker compose build --no-cache backend
+docker compose up -d
+Then watch it come up clean:
+
+docker compose logs -f backend
