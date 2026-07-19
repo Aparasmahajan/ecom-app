@@ -260,3 +260,74 @@ RAZORPAY_KEY_ID   (public key id only — never the secret)
 ## 11. Open / Future Considerations
 - Order notifications (email via Brevo, or push via Expo Notifications) — confirm if needed for MVP.
 - Refund / cancellation flow via Razorpay — out of scope for MVP unless required.
+
+---
+
+## 12. Design System (LOCKED — must match on every screen)
+
+The whole app follows one visual language. Any new screen, component, or admin surface must match this — do not introduce a second theme, second accent, or lighter/pastel variant.
+
+### 12.1 Brand
+- Two-line wordmark: **URBAN** (bold, white) over **CLOTHING CO** (small, gold, tracked). Keep the split — never combine into one line.
+- Use the wordmark in the top-left header and repeated as a big gold mark in the footer.
+
+### 12.2 Palette
+| Token | Hex | Usage |
+|---|---|---|
+| `--bg` | `#0a0a0a` | Page background |
+| `--bg-2` | `#111111` | Bottom nav, footer strip |
+| `--card` | `#1a1a1a` | Cards, list items, forms, modal |
+| `--card-2` | `#262626` | Card hover / secondary elevated |
+| `--text` | `#ffffff` | Primary text |
+| `--muted` | `#9ca3af` | Secondary text, meta, placeholders |
+| `--border` | `#2a2a2a` | All 1px separators |
+| `--accent` | `#f5c842` | Gold — CTAs, prices, active tabs, badges, ratings, brand accent |
+| `--danger` | `#ef4444` | Destructive actions, wishlist heart when active |
+
+Never use pure black (`#000`) — use `--bg`. Never use a second accent color; anything that used to be red/blue for emphasis becomes gold.
+
+### 12.3 Typography
+- System sans (`-apple-system, "Segoe UI", Roboto`).
+- **Section headings** and category names: uppercase, `letter-spacing: 0.5px–2px`, weight `700–900`.
+- Body: 14px, `line-height: 1.5`, color `--text`.
+- Meta / labels: 11–13px, `--muted`, often uppercase with tracking.
+- Prices: `--accent`, weight 700+.
+
+### 12.4 Shape
+- Corner radii: `8px` (small controls), `10–12px` (inputs), `14px` (cards, list items), `16–20px` (hero, modal, big cards). Never sharp corners.
+- Chips (circular category avatars, pill filter tabs): fully rounded (`50%` or `999px`).
+
+### 12.5 Components
+- **Buttons**
+  - Primary `.btn`: solid gold background, black text, bold, uppercase, `border-radius: 8px`.
+  - Secondary `.btn.secondary`: transparent bg, gold border + gold text.
+  - Dark `.btn.dark`: `--card` bg, white text, `--border` outline.
+  - Small `.btn.small` for inline actions.
+- **Product card**: `--card` bg + `--border`, image on top with **heart button top-right** (`rgba(0,0,0,0.55)` + blur), title, price in gold, optional `HOT` tag.
+- **Hero**: dark gradient panel, large uppercase title stacked on 3 lines, one-line tagline, gold `SHOP NOW` button. Right side has a masked hero image fading into the panel.
+- **Category chips (home)**: circular 68px image, name below, horizontally scrolling row with hidden scrollbar. Bordered with `--accent` on hover.
+- **Big category cards (Categories page)**: 130px tall dark card, image on right fading left-to-right into black, gold uppercase name + muted "Explore Now →".
+- **Filter tabs (product listing)**: pill chips in a horizontal scroll strip. Active chip = solid gold + black text.
+- **Bottom nav**: fixed, `--bg-2`, 5 tabs (Home / Categories / Wishlist / Cart / Profile). Active tab uses gold color + a 2px gold indicator line at the top. Badges are gold pills with black text.
+- **Feature strip**: horizontal scroll strip above the footer with 5 items — Premium Quality / Trendy Designs / Easy Returns / Secure Payment / Fast Delivery. Each has a circular gold-tinted icon plus title + subtitle.
+- **Toast**: gold pill, black text, floats above the bottom nav.
+- **Status pills**: rounded, translucent color-tinted background matching the status semantics (see `.status-*` classes).
+
+### 12.6 Layout
+- Mobile-first, `max-width: 1200px` container.
+- Sticky top header, fixed bottom nav — reserve `padding-bottom: 80px` on `<body>` so content isn't hidden.
+- Home screen sections in this fixed order: **Hero → Category chip strip → Trending Now → New Arrivals**.
+- Categories screen: vertical stack of big banner cards.
+- Product detail: two-column on desktop (gallery + info), stacked on mobile. Order: title → rating → price → **color swatches** → **size buttons** → quantity → note → `ADD TO CART` + `BUY NOW` side-by-side → wishlist toggle → Product Details.
+- Profile: circular gold avatar with initials + 3-column stat grid (Orders / Wishlist / Addresses) + menu list with gold `pm-icon` on the left and chevron on the right.
+
+### 12.7 Imagery
+- All product / category / hero photos are real clothing photos served from `images.unsplash.com` (see `lib/images.ts`). Never use random placeholder services (picsum, placeholder.com) for user-visible art.
+- Images are always requested with `?auto=format&fit=crop&w=<width>&q=80` so the CDN returns a right-sized WebP.
+- Image IDs are grouped per category in `lib/images.ts`; new categories must add a matching photo pool there. Products get rotating triples from their category's pool via `productImages(categoryId, index)`.
+
+### 12.8 Motion
+- Cards lift 2px on hover (`transform: translateY(-2px)`), 150ms.
+- Buttons scale to `0.98` on active press.
+- Toast fades in from 8px below.
+- Keep motion subtle and short — no bouncing, no long transitions.

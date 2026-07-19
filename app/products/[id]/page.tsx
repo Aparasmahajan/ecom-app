@@ -7,6 +7,13 @@ import { K, get, set, uid, money } from '@/lib/storage';
 import type { Product, Review, CartItem } from '@/lib/types';
 import { productRating } from '@/lib/helpers';
 
+const COLORS = [
+  { name: 'Black',   hex: '#111' },
+  { name: 'White',   hex: '#f5f5f5' },
+  { name: 'Brown',   hex: '#8b5a2b' },
+  { name: 'Olive',   hex: '#6b7047' }
+];
+
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -16,6 +23,7 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [inWishlist, setInWishlist] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<string>('');
+  const [selectedColor, setSelectedColor] = useState<string>('Black');
   const [selectedImg, setSelectedImg] = useState(0);
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState('');
@@ -45,17 +53,21 @@ export default function ProductDetailPage() {
     return true;
   };
 
-  const addToCart = () => {
-    if (!requireAuth()) return;
+  const addToCart = (): boolean => {
+    if (!requireAuth()) return false;
     const key = scoped(K.CART, user!.id);
     const cart = get<CartItem[]>(key, []);
-    const existing = cart.find(c => c.variantId === selectedVariant && c.productId === product.id && c.note === note);
+    const noteWithColor = selectedColor ? `Color: ${selectedColor}${note ? ' · ' + note : ''}` : note;
+    const existing = cart.find(c => c.variantId === selectedVariant && c.productId === product.id && c.note === noteWithColor);
     if (existing) existing.quantity += qty;
-    else cart.push({ id: uid(), productId: product.id, variantId: selectedVariant, quantity: qty, note });
+    else cart.push({ id: uid(), productId: product.id, variantId: selectedVariant, quantity: qty, note: noteWithColor });
     set(key, cart);
     refresh();
-    toast('Added to cart');
+    return true;
   };
+
+  const onAddCart = () => { if (addToCart()) toast('Added to cart'); };
+  const onBuyNow = () => { if (addToCart()) router.push('/checkout'); };
 
   const toggleWish = () => {
     if (!requireAuth()) return;
@@ -85,6 +97,7 @@ export default function ProductDetailPage() {
   };
 
   const rating = productRating(product.id);
+  const currentSize = product.variants.find(v => v.id === selectedVariant)?.size;
 
   return (
     <>
@@ -105,14 +118,27 @@ export default function ProductDetailPage() {
         </div>
         <div>
           {product.isHotSeller && <span className="tag">HOT SELLER</span>}
-          <h1>{product.name}</h1>
+          <h1 style={{ marginTop: 8 }}>{product.name}</h1>
           <div className="rating">
             {rating ? `★ ${rating} (${reviews.length} reviews)` : 'No reviews yet'}
           </div>
           <div className="price-big">{money(product.basePrice)}</div>
-          <div className="desc">{product.description}</div>
 
-          <label style={{ fontSize: 13, color: 'var(--muted)' }}>Size</label>
+          <div className="selector-label">Color: <strong>{selectedColor}</strong></div>
+          <div className="color-row">
+            {COLORS.map(c => (
+              <button
+                key={c.name}
+                className={`color-swatch ${selectedColor === c.name ? 'active' : ''}`}
+                style={{ background: c.hex }}
+                onClick={() => setSelectedColor(c.name)}
+                title={c.name}
+                aria-label={c.name}
+              />
+            ))}
+          </div>
+
+          <div className="selector-label">Size: <strong>{currentSize || 'Select Size'}</strong></div>
           <div className="size-row">
             {product.variants.map(v => (
               <button
@@ -121,32 +147,46 @@ export default function ProductDetailPage() {
                 disabled={v.stock === 0}
                 onClick={() => setSelectedVariant(v.id)}
               >
-                {v.size}{v.stock === 0 ? ' (out)' : ''}
+                {v.size}
               </button>
             ))}
           </div>
 
-          <label style={{ fontSize: 13, color: 'var(--muted)' }}>Quantity</label>
+          <div className="selector-label">Quantity</div>
           <div className="qty-row">
             <button onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
             <span>{qty}</span>
             <button onClick={() => setQty(qty + 1)}>+</button>
           </div>
 
-          <label style={{ fontSize: 13, color: 'var(--muted)' }}>Order note (optional)</label>
+          <div className="selector-label">Order note (optional)</div>
           <textarea
             rows={2}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Any special instructions for the tailor..."
-            style={{ width: '100%', padding: 8, border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: 12, border: '1px solid var(--border)', borderRadius: 10, fontFamily: 'inherit', background: 'var(--bg-2)', color: 'var(--text)' }}
           />
 
-          <div className="form-actions">
-            <button className="btn" onClick={addToCart}>Add to Cart</button>
-            <button className="btn secondary" onClick={toggleWish}>
-              {inWishlist ? '♥ In Wishlist' : '♡ Wishlist'}
-            </button>
+          <div className="pd-actions">
+            <button className="btn dark" onClick={onAddCart}>ADD TO CART</button>
+            <button className="btn" onClick={onBuyNow}>BUY NOW</button>
+          </div>
+
+          <button
+            onClick={toggleWish}
+            style={{
+              marginTop: 12, background: 'none', border: 'none',
+              color: inWishlist ? 'var(--danger)' : 'var(--muted)',
+              cursor: 'pointer', fontSize: 14, fontFamily: 'inherit'
+            }}
+          >
+            {inWishlist ? '♥ In Wishlist' : '♡ Add to Wishlist'}
+          </button>
+
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Product Details</div>
+            <div className="desc">{product.description}</div>
           </div>
         </div>
       </div>
@@ -171,7 +211,7 @@ export default function ProductDetailPage() {
           <label>Comment</label>
           <textarea rows={2} value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
           <div className="form-actions">
-            <button className="btn" onClick={submitReview}>Submit</button>
+            <button className="btn" onClick={submitReview}>Submit Review</button>
           </div>
         </div>
       )}
