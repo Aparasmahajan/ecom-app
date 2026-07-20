@@ -27,12 +27,27 @@ public class CartItem {
     @Column(nullable = false)
     private int quantity;
 
+    @Builder.Default
     @Column(nullable = false)
     private String note = "";
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) createdAt = OffsetDateTime.now();
+        if (updatedAt == null) updatedAt = OffsetDateTime.now();
+        if (note == null) note = "";
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
 }

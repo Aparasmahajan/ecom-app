@@ -25,9 +25,11 @@ public class Order {
     @Column(name = "address_id")
     private UUID addressId;
 
+    @Builder.Default
     @Column(nullable = false)
     private String status = "CREATED";
 
+    @Builder.Default
     @Column(name = "payment_status", nullable = false)
     private String paymentStatus = "PENDING";
 
@@ -45,6 +47,7 @@ public class Order {
     @Column(name = "tracking_number") private String trackingNumber;
 
     /** Private notes visible only to admins (never returned to customers). */
+    @Builder.Default
     @Column(name = "admin_notes", nullable = false)
     private String adminNotes = "";
 
@@ -60,13 +63,29 @@ public class Order {
     @Column(name = "ship_state")     private String shipState;
     @Column(name = "ship_pincode")   private String shipPincode;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) createdAt = OffsetDateTime.now();
+        if (updatedAt == null) updatedAt = OffsetDateTime.now();
+        if (status == null) status = "CREATED";
+        if (paymentStatus == null) paymentStatus = "PENDING";
+        if (adminNotes == null) adminNotes = "";
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
 }
