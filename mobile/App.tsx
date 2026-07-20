@@ -10,6 +10,10 @@ import Tabs from './src/navigation/Tabs';
 import ProductsScreen from './src/screens/ProductsScreen';
 import ProductDetailScreen from './src/screens/ProductDetailScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import AddressesScreen from './src/screens/AddressesScreen';
+import CheckoutScreen from './src/screens/CheckoutScreen';
+import OrdersScreen from './src/screens/OrdersScreen';
+import OrderDetailScreen from './src/screens/OrderDetailScreen';
 
 import { useApp } from './src/state/store';
 import { colors } from './src/theme';
@@ -60,6 +64,10 @@ export default function App() {
             <Stack.Screen name="Products" component={ProductsScreen} options={{ title: 'Shop' }} />
             <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: '' }} />
             <Stack.Screen name="Auth" component={AuthScreen} options={{ title: 'Sign In' }} />
+            <Stack.Screen name="Addresses" component={AddressesScreen} options={{ title: 'Addresses' }} />
+            <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'Checkout' }} />
+            <Stack.Screen name="Orders" component={OrdersScreen} options={{ title: 'My Orders' }} />
+            <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ title: 'Order' }} />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

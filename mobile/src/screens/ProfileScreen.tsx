@@ -48,10 +48,10 @@ export default function ProfileScreen() {
   }
 
   const initial = (user.name || user.email)[0]?.toUpperCase() || 'U';
-  const menu = [
-    { label: 'My Orders', icon: '📋' },
-    { label: 'My Wishlist', icon: '♡' },
-    { label: 'Addresses', icon: '📍' },
+  const menu: Array<{ label: string; icon: string; onPress?: () => void }> = [
+    { label: 'My Orders', icon: '📋', onPress: () => nav.navigate('Orders') },
+    { label: 'My Wishlist', icon: '♡', onPress: () => nav.navigate('Root', { screen: 'Wishlist' }) },
+    { label: 'Addresses', icon: '📍', onPress: () => nav.navigate('Addresses') },
     { label: 'Payment Methods', icon: '💳' },
     { label: 'Account Settings', icon: '⚙' },
     { label: 'Help & Support', icon: '?' },
@@ -77,7 +77,11 @@ export default function ProfileScreen() {
 
       <View style={styles.menu}>
         {menu.map((m, i) => (
-          <Pressable key={m.label} style={[styles.item, i === menu.length - 1 && { borderBottomWidth: 0 }]}>
+          <Pressable
+            key={m.label}
+            onPress={m.onPress}
+            style={[styles.item, i === menu.length - 1 && { borderBottomWidth: 0 }]}
+          >
             <Text style={styles.icon}>{m.icon}</Text>
             <Text style={styles.itemText}>{m.label}</Text>
             <Text style={styles.chev}>›</Text>

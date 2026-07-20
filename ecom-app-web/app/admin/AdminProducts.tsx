@@ -111,6 +111,7 @@ export default function AdminProducts() {
           cats={cats}
           onSave={saveProduct}
           onCancel={() => setEditing(undefined)}
+          onVariantsChanged={reload}
           toast={toast}
         />
       )}
@@ -119,12 +120,13 @@ export default function AdminProducts() {
 }
 
 function ProductModal({
-  initial, cats, onSave, onCancel, toast
+  initial, cats, onSave, onCancel, onVariantsChanged, toast
 }: {
   initial: Product | null;
   cats: Category[];
   onSave: (form: Partial<Product>, id?: string) => Promise<void>;
   onCancel: () => void;
+  onVariantsChanged: () => Promise<void>;
   toast: (m: string) => void;
 }) {
   const isNew = initial === null;
@@ -134,7 +136,42 @@ function ProductModal({
   const [basePrice, setBasePrice] = useState<number>(initial?.basePrice || 999);
   const [imagesStr, setImagesStr] = useState((initial?.images || []).join(', '));
   const [hotSeller, setHotSeller] = useState(initial?.hotSeller || false);
+  const [variants, setVariants] = useState<Variant[]>(initial?.variants || []);
+  const [newSize, setNewSize] = useState('');
+  const [newStock, setNewStock] = useState<number>(10);
   const [busy, setBusy] = useState(false);
+
+  const refreshVariants = async () => {
+    if (!initial) return;
+    const fresh = await api.catalog.product(initial.id);
+    setVariants(fresh.variants);
+    await onVariantsChanged();
+  };
+  const addVariant = async () => {
+    if (!initial) return;
+    if (!newSize.trim()) { toast('Enter a size'); return; }
+    try {
+      await api.admin.variants.add(initial.id, { size: newSize.trim(), stock: Number(newStock) });
+      setNewSize(''); setNewStock(10);
+      await refreshVariants();
+      toast('Variant added');
+    } catch (e) { toast('Failed: ' + (e instanceof ApiError ? e.message : (e as Error).message)); }
+  };
+  const saveVariant = async (v: Variant, size: string, stock: number, priceModifier: number) => {
+    try {
+      await api.admin.variants.update(v.id, { size: size.trim(), color: v.color, stock, priceModifier });
+      await refreshVariants();
+      toast('Variant saved');
+    } catch (e) { toast('Failed: ' + (e instanceof ApiError ? e.message : (e as Error).message)); }
+  };
+  const removeVariant = async (id: string) => {
+    if (!confirm('Remove this variant?')) return;
+    try {
+      await api.admin.variants.remove(id);
+      await refreshVariants();
+      toast('Variant removed');
+    } catch (e) { toast('Failed: ' + (e instanceof ApiError ? e.message : (e as Error).message)); }
+  };
 
   const submit = async () => {
     if (!name.trim()) { toast('Name required'); return; }
@@ -189,15 +226,55 @@ function ProductModal({
           Hot Seller
         </label>
 
-        <p style={{ marginTop: 12, fontSize: 12, color: 'var(--muted)' }}>
-          Variants (sizes / stock) can be managed via the API. Adding via this modal is a follow-up.
-        </p>
+        {isNew ? (
+          <p style={{ marginTop: 12, fontSize: 12, color: 'var(--muted)' }}>
+            A default S / M / L / XL variant set is created automatically. Save the product, then re-open it to add or edit variants.
+          </p>
+        ) : (
+          <div style={{ marginTop: 16 }}>
+            <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 8 }}>Variants (size · stock · price modifier)</label>
+            {variants.map(v => (
+              <VariantRow key={v.id} variant={v} onSave={saveVariant} onRemove={removeVariant} />
+            ))}
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <input value={newSize} onChange={(e) => setNewSize(e.target.value)} placeholder="Size (e.g. XL)"
+                style={{ flex: 2, padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text)' }} />
+              <input type="number" value={newStock} onChange={(e) => setNewStock(Number(e.target.value))} placeholder="Stock"
+                style={{ flex: 1, padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text)' }} />
+              <button className="btn small" onClick={addVariant}>Add</button>
+            </div>
+          </div>
+        )}
 
         <div className="form-actions">
           <button className="btn" onClick={submit} disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
           <button className="btn secondary" onClick={onCancel}>Cancel</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function VariantRow({
+  variant, onSave, onRemove
+}: {
+  variant: Variant;
+  onSave: (v: Variant, size: string, stock: number, priceModifier: number) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+}) {
+  const [size, setSize] = useState(variant.size);
+  const [stock, setStock] = useState<number>(variant.stock);
+  const [priceModifier, setPriceModifier] = useState<number>(variant.priceModifier);
+  const dirty = size !== variant.size || stock !== variant.stock || priceModifier !== variant.priceModifier;
+  const cell = { padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text)' } as const;
+
+  return (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+      <input value={size} onChange={(e) => setSize(e.target.value)} style={{ ...cell, flex: 2 }} />
+      <input type="number" value={stock} onChange={(e) => setStock(Number(e.target.value))} style={{ ...cell, flex: 1 }} />
+      <input type="number" value={priceModifier} onChange={(e) => setPriceModifier(Number(e.target.value))} style={{ ...cell, flex: 1 }} />
+      <button className="btn small secondary" disabled={!dirty} onClick={() => onSave(variant, size, stock, priceModifier)}>Save</button>
+      <button className="btn small danger" onClick={() => onRemove(variant.id)}>✕</button>
     </div>
   );
 }

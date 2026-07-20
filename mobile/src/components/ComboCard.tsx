@@ -6,15 +6,14 @@ import { colors, radii, money } from '../theme';
 /**
  * Mobile combo card — matches the visual language of the web ComboCard
  * (backdrop image + gradient overlay + gold combo-count pill + price).
- * Tapping it navigates to the combo detail screen (or the products list
- * for now, since combo detail isn't a screen yet).
+ * Tapping it opens the products list filtered to this combo's items.
  */
 export default function ComboCard({ combo }: { combo: Combo }) {
   const nav = useNavigation<any>();
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && { transform: [{ translateY: -2 }] }]}
-      onPress={() => nav.navigate('Products', {})}
+      onPress={() => nav.navigate('Products', { comboId: combo.id })}
     >
       <ImageBackground source={{ uri: combo.image }} imageStyle={styles.img} style={styles.imgWrap}>
         <View style={styles.overlay} />

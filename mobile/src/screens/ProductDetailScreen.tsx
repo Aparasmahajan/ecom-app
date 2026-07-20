@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, Image, ScrollView, Pressable, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import Screen from '../components/Screen';
 import Button from '../components/Button';
-import { api, ApiError, Product } from '../lib/api';
+import { api, ApiError, Product, Review } from '../lib/api';
 import { colors, radii, money } from '../theme';
 import { useApp } from '../state/store';
 
@@ -25,8 +25,20 @@ export default function ProductDetailScreen() {
   const [color, setColor] = useState('Black');
   const [imgIdx, setImgIdx] = useState(0);
   const [qty, setQty] = useState(1);
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [inWish, setInWish] = useState(false);
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [myStars, setMyStars] = useState(5);
+  const [myComment, setMyComment] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
+
   const id: string = route.params?.id;
+
+  const loadReviews = useCallback(async () => {
+    try { setReviews(await api.reviews.list(id)); } catch { /* keep */ }
+  }, [id]);
 
   useEffect(() => {
     (async () => {
@@ -36,7 +48,18 @@ export default function ProductDetailScreen() {
         if (p.variants[0]) setVariantId(p.variants[0].id);
       } catch { /* empty state */ }
     })();
-  }, [id]);
+    loadReviews();
+  }, [id, loadReviews]);
+
+  useEffect(() => {
+    (async () => {
+      if (!user) { setInWish(false); return; }
+      try {
+        const wish = await api.wishlist.list();
+        setInWish(wish.some(p => p.id === id));
+      } catch { /* keep */ }
+    })();
+  }, [user, id]);
 
   if (!product) {
     return <Screen><ActivityIndicator color={colors.accent} style={{ marginTop: 60 }} /></Screen>;
@@ -54,13 +77,43 @@ export default function ProductDetailScreen() {
     if (!requireAuth()) return false;
     setBusy(true);
     try {
-      await api.cart.add(variantId, qty, `Color: ${color}`);
+      const fullNote = `Color: ${color}${note.trim() ? ` · ${note.trim()}` : ''}`;
+      await api.cart.add(variantId, qty, fullNote);
       await refresh();
       return true;
     } catch (e) {
       Alert.alert('Failed', e instanceof ApiError ? e.message : 'Could not add to cart');
       return false;
     } finally { setBusy(false); }
+  };
+
+  const toggleWish = async () => {
+    if (!requireAuth()) return;
+    const next = !inWish;
+    setInWish(next);
+    try {
+      if (next) await api.wishlist.add(product.id);
+      else      await api.wishlist.remove(product.id);
+      await refresh();
+    } catch {
+      setInWish(!next);
+    }
+  };
+
+  const submitReview = async () => {
+    if (!requireAuth()) return;
+    if (!myComment.trim()) { Alert.alert('Add a comment', 'Please write a short review.'); return; }
+    setReviewBusy(true);
+    try {
+      await api.reviews.create(product.id, myStars, myComment.trim());
+      setMyComment('');
+      await loadReviews();
+      // Refresh the product so the effective rating updates.
+      try { setProduct(await api.catalog.product(id)); } catch { /* keep */ }
+      Alert.alert('Thanks!', 'Your review was posted.');
+    } catch (e) {
+      Alert.alert('Failed', e instanceof ApiError ? e.message : 'Could not post review');
+    } finally { setReviewBusy(false); }
   };
 
   const currentSize = product.variants.find(v => v.id === variantId)?.size;
@@ -84,7 +137,7 @@ export default function ProductDetailScreen() {
       <Text style={styles.title}>{product.name}</Text>
       {product.effectiveRating > 0 && (
         <Text style={{ color: colors.accent, fontSize: 13, marginTop: 2 }}>
-          ★ {product.effectiveRating}
+          ★ {product.effectiveRating} · {reviews.length} review{reviews.length === 1 ? '' : 's'}
         </Text>
       )}
       <Text style={styles.price}>{money(product.basePrice)}</Text>
@@ -118,6 +171,16 @@ export default function ProductDetailScreen() {
         <Pressable style={styles.qtyBtn} onPress={() => setQty(qty + 1)}><Text style={styles.qtyBtnText}>+</Text></Pressable>
       </View>
 
+      <Text style={styles.label}>Note (optional)</Text>
+      <TextInput
+        value={note}
+        onChangeText={setNote}
+        placeholder="e.g. gift wrap, specific shade…"
+        placeholderTextColor={colors.muted2}
+        style={styles.noteInput}
+        multiline
+      />
+
       <View style={styles.actions}>
         <Button title="ADD TO CART" variant="dark" style={{ flex: 1 }} loading={busy}
           onPress={async () => { if (await addToCart()) Alert.alert('Added', 'Item added to cart'); }} />
@@ -125,8 +188,49 @@ export default function ProductDetailScreen() {
           onPress={async () => { if (await addToCart()) nav.navigate('Root', { screen: 'Cart' }); }} />
       </View>
 
+      <Pressable style={styles.wishRow} onPress={toggleWish}>
+        <Text style={[styles.wishHeart, inWish && { color: colors.danger }]}>{inWish ? '♥' : '♡'}</Text>
+        <Text style={styles.wishText}>{inWish ? 'Saved to Wishlist' : 'Add to Wishlist'}</Text>
+      </Pressable>
+
       <Text style={styles.detailsTitle}>Product Details</Text>
       <Text style={styles.desc}>{product.description}</Text>
+
+      {/* -------- Ratings & Reviews -------- */}
+      <Text style={styles.detailsTitle}>Ratings & Reviews</Text>
+      {reviews.length === 0 ? (
+        <Text style={styles.desc}>No reviews yet. Be the first to review this product.</Text>
+      ) : (
+        reviews.map(r => (
+          <View key={r.id} style={styles.reviewCard}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={styles.reviewName}>{r.userName}</Text>
+              <Text style={styles.reviewStars}>{'★'.repeat(r.stars)}{'☆'.repeat(5 - r.stars)}</Text>
+            </View>
+            <Text style={styles.reviewComment}>{r.comment}</Text>
+          </View>
+        ))
+      )}
+
+      <View style={styles.reviewForm}>
+        <Text style={styles.label}>Write a review</Text>
+        <View style={styles.starRow}>
+          {[1, 2, 3, 4, 5].map(s => (
+            <Pressable key={s} onPress={() => setMyStars(s)}>
+              <Text style={[styles.starPick, s <= myStars && { color: colors.accent }]}>★</Text>
+            </Pressable>
+          ))}
+        </View>
+        <TextInput
+          value={myComment}
+          onChangeText={setMyComment}
+          placeholder="Share your thoughts…"
+          placeholderTextColor={colors.muted2}
+          style={styles.noteInput}
+          multiline
+        />
+        <Button title="POST REVIEW" onPress={submitReview} loading={reviewBusy} style={{ marginTop: 12 }} />
+      </View>
     </Screen>
   );
 }
@@ -163,7 +267,27 @@ const styles = StyleSheet.create({
   },
   qtyBtnText: { color: colors.text, fontSize: 18 },
   qtyVal: { color: colors.text, fontWeight: '600', minWidth: 24, textAlign: 'center' },
+  noteInput: {
+    backgroundColor: colors.bg2, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 10, padding: 12, color: colors.text, fontSize: 14, minHeight: 44
+  },
   actions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  detailsTitle: { color: colors.text, fontWeight: '700', marginTop: 24, marginBottom: 8 },
-  desc: { color: colors.muted, fontSize: 14, lineHeight: 20 }
+  wishRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
+  wishHeart: { color: colors.text, fontSize: 22 },
+  wishText: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  detailsTitle: { color: colors.text, fontWeight: '700', marginTop: 24, marginBottom: 8, fontSize: 15 },
+  desc: { color: colors.muted, fontSize: 14, lineHeight: 20 },
+  reviewCard: {
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radii.md, padding: 12, marginBottom: 10
+  },
+  reviewName: { color: colors.text, fontWeight: '600', fontSize: 13 },
+  reviewStars: { color: colors.accent, fontSize: 13 },
+  reviewComment: { color: colors.muted, fontSize: 13, marginTop: 4, lineHeight: 18 },
+  reviewForm: {
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radii.lg, padding: 16, marginTop: 12
+  },
+  starRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
+  starPick: { color: colors.border2, fontSize: 30 }
 });
