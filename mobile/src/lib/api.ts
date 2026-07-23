@@ -96,6 +96,7 @@ export interface Product {
   id: string; name: string; description: string; categoryId: string;
   gender: string; ageGroup: string; basePrice: number;
   images: string[]; hotSeller: boolean;
+  listed?: boolean; listQuantity?: number;
   adminRatingOverride: number | null; effectiveRating: number;
   variants: Variant[];
 }
@@ -123,6 +124,24 @@ export interface Combo {
 }
 export interface Review {
   id: string; userName: string; stars: number; comment: string; createdAt: string;
+}
+export type BannerTemplate = 'hero' | 'sale' | 'split' | 'minimal';
+export interface Banner {
+  id: string; template: BannerTemplate; title: string; subtitle: string;
+  imageUrl: string; price: string; ctaText: string; ctaHref: string;
+  active: boolean; position: number; createdAt: string;
+}
+export interface Settings { homeBannerCount: number; }
+export interface AdminOrder extends Order {
+  updatedAt: string;
+  trackingNumber: string | null;
+  adminNotes: string;
+  cancelReason: string | null;
+  customer: { id: string; name: string; email: string; phone: string | null } | null;
+}
+export interface AdminUser {
+  id: string; email: string; name: string; phone?: string;
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN'; enabled: boolean; createdAt: string;
 }
 
 export const api = {
@@ -162,7 +181,9 @@ export const api = {
     },
     product:    (id: string) => request<Product>('GET', `/products/${id}`),
     combos:     () => request<Combo[]>('GET', '/combos'),
-    combo:      (id: string) => request<Combo>('GET', `/combos/${id}`)
+    combo:      (id: string) => request<Combo>('GET', `/combos/${id}`),
+    banners:    () => request<Banner[]>('GET', '/banners'),
+    settings:   () => request<Settings>('GET', '/settings')
   },
   cart: {
     list:   () => request<CartItem[]>('GET', '/cart'),
@@ -187,5 +208,60 @@ export const api = {
     list:   (productId: string) => request<Review[]>('GET', `/products/${productId}/reviews`),
     create: (productId: string, stars: number, comment: string) =>
       request<Review>('POST', `/products/${productId}/reviews`, { stars, comment })
+  },
+
+  /* -------- Admin (ADMIN / SUPER_ADMIN) -------- */
+  admin: {
+    products: {
+      list:    () => request<Product[]>('GET', '/admin/products'),
+      create:  (body: Partial<Product>) => request<Product>('POST', '/admin/products', body),
+      update:  (id: string, body: Partial<Product>) => request<Product>('PUT', `/admin/products/${id}`, body),
+      remove:  (id: string) => request<void>('DELETE', `/admin/products/${id}`),
+      setHotSeller:     (id: string, isHotSeller: boolean) =>
+        request<Product>('PUT', `/admin/products/${id}/hot-seller`, { isHotSeller }),
+      setRatingOverride:(id: string, stars: number | null) =>
+        request<Product>('PUT', `/admin/products/${id}/rating-override`, { stars }),
+      setListing:       (id: string, body: { listed?: boolean; listQuantity?: number }) =>
+        request<Product>('PUT', `/admin/products/${id}/listing`, body)
+    },
+    variants: {
+      add:    (productId: string, body: { size: string; color?: string; stock: number; priceModifier?: number }) =>
+        request<Variant>('POST', `/admin/products/${productId}/variants`, body),
+      update: (id: string, body: { size: string; color?: string; stock: number; priceModifier?: number }) =>
+        request<Variant>('PUT', `/admin/variants/${id}`, body),
+      remove: (id: string) => request<void>('DELETE', `/admin/variants/${id}`)
+    },
+    orders: {
+      list:       () => request<AdminOrder[]>('GET', '/admin/orders'),
+      get:        (id: string) => request<AdminOrder>('GET', `/admin/orders/${id}`),
+      setStatus:  (id: string, status: string) => request<AdminOrder>('PUT', `/admin/orders/${id}/status`, { status }),
+      setTracking:(id: string, trackingNumber: string) => request<AdminOrder>('PUT', `/admin/orders/${id}/tracking`, { trackingNumber }),
+      setNotes:   (id: string, notes: string) => request<AdminOrder>('PUT', `/admin/orders/${id}/notes`, { notes }),
+      cancel:     (id: string, reason: string) => request<AdminOrder>('PUT', `/admin/orders/${id}/cancel`, { reason }),
+      refund:     (id: string, reason: string) => request<AdminOrder>('PUT', `/admin/orders/${id}/refund`, { reason })
+    },
+    combos: {
+      list:   () => request<Combo[]>('GET', '/admin/combos'),
+      create: (body: any) => request<Combo>('POST', '/admin/combos', body),
+      update: (id: string, body: any) => request<Combo>('PUT', `/admin/combos/${id}`, body),
+      remove: (id: string) => request<void>('DELETE', `/admin/combos/${id}`)
+    },
+    banners: {
+      list:   () => request<Banner[]>('GET', '/admin/banners'),
+      create: (body: Partial<Banner>) => request<Banner>('POST', '/admin/banners', body),
+      update: (id: string, body: Partial<Banner>) => request<Banner>('PUT', `/admin/banners/${id}`, body),
+      remove: (id: string) => request<void>('DELETE', `/admin/banners/${id}`)
+    },
+    settings: {
+      update: (body: Partial<Settings>) => request<Settings>('PUT', '/admin/settings', body)
+    },
+    admins: {
+      list:          () => request<AdminUser[]>('GET', '/admin/admins'),
+      create:        (body: { email: string; name: string; password: string; phone?: string }) =>
+        request<AdminUser>('POST', '/admin/admins', body),
+      resetPassword: (id: string, password: string) => request<AdminUser>('PUT', `/admin/admins/${id}/password`, { password }),
+      setEnabled:    (id: string, enabled: boolean) => request<AdminUser>('PUT', `/admin/admins/${id}/enabled`, { enabled }),
+      remove:        (id: string) => request<void>('DELETE', `/admin/admins/${id}`)
+    }
   }
 };

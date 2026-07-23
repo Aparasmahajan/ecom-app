@@ -336,9 +336,15 @@ input, textarea, select { color: var(--text); }
 .status-REFUNDED  { background: rgba(168,85,247,0.15); color: #c084fc; }
 
 /* ---------- Admin ---------- */
-.admin-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); overflow-x: auto; }
-.admin-tabs button { background: none; border: none; padding: 10px 16px; cursor: pointer; font-size: 14px; color: var(--muted); border-bottom: 2px solid transparent; font-family: inherit; }
+/* Tabs wrap onto multiple rows so no tab (e.g. the SUPER_ADMIN-only "Admins"
+   tab, which sits last) is ever hidden off the right edge. */
+.admin-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.admin-tabs button { background: none; border: none; padding: 10px 16px; cursor: pointer; font-size: 14px; color: var(--muted); border-bottom: 2px solid transparent; font-family: inherit; white-space: nowrap; }
 .admin-tabs button.active { color: var(--accent); border-color: var(--accent); font-weight: 700; }
+/* SUPER_ADMIN-only tab — visually distinct so its powers are discoverable. */
+.admin-tabs button.super { color: var(--accent); margin-left: auto; }
+.admin-tabs button.super::before { content: '★ '; }
+@media (max-width: 768px) { .admin-tabs button.super { margin-left: 0; } }
 table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; }
 th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); }
 th { background: var(--bg-2); font-weight: 700; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
@@ -621,4 +627,119 @@ tr:last-child td { border-bottom: none; }
 }
 @media (min-width: 769px) {
   .bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); border-radius: 20px 20px 0 0; }
+}
+
+/* ---------- Admin: responsive table wrapper ---------- */
+/* Wrap every plain admin <table> so it scrolls horizontally on small screens
+   instead of overflowing the viewport. */
+.admin-table-wrap {
+  display: block; width: 100%;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border-radius: 12px; border: 1px solid var(--border);
+}
+.admin-table-wrap table { border: none; border-radius: 0; min-width: 620px; }
+.admin-table-wrap table th:first-child,
+.admin-table-wrap table td:first-child { position: sticky; left: 0; background: var(--card); }
+.admin-table-wrap table thead th:first-child { background: var(--bg-2); z-index: 1; }
+@media (max-width: 768px) {
+  .admin-table-wrap table { min-width: 560px; }
+}
+
+/* ---------- Admin: view toggle (List / Board) ---------- */
+.ao-viewtoggle { display: flex; gap: 6px; margin-bottom: 14px; }
+.ao-viewtoggle button {
+  padding: 7px 16px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card); color: var(--muted);
+  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+}
+.ao-viewtoggle button.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+/* ---------- Admin: Kanban board ---------- */
+.kanban { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: thin; }
+.kanban::-webkit-scrollbar { height: 8px; }
+.kanban-col {
+  flex: 0 0 268px; background: var(--bg-2);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px;
+  max-height: 72vh;
+}
+.kanban-col .kc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text); padding: 2px 2px 8px; border-bottom: 1px solid var(--border);
+}
+.kanban-col .kc-head .kc-count {
+  background: rgba(245,200,66,0.15); color: var(--accent);
+  border-radius: 999px; font-size: 11px; padding: 1px 8px; font-weight: 700;
+}
+.kanban-col .kc-body { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
+.kanban-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px; cursor: pointer; transition: border-color .15s, transform .1s;
+}
+.kanban-card:hover { border-color: var(--border-2); transform: translateY(-1px); }
+.kanban-card .kc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.kanban-card .kc-id { font-weight: 800; font-size: 13px; }
+.kanban-card .kc-total { color: var(--accent); font-weight: 800; font-size: 13px; }
+.kanban-card .kc-cust { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.kanban-card .kc-meta { color: var(--muted-2); font-size: 11px; margin-top: 4px; }
+.kanban-card .kc-advance {
+  margin-top: 10px; width: 100%; padding: 6px; border-radius: 8px;
+  border: 1px solid var(--accent); background: transparent; color: var(--accent);
+  font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.kanban-card .kc-advance:hover { background: var(--accent); color: var(--bg); }
+.kanban-empty { color: var(--muted-2); font-size: 12px; text-align: center; padding: 16px 0; }
+
+/* ---------- Storefront: landing-page banners ---------- */
+.banner-strip { display: flex; flex-direction: column; gap: 16px; margin-bottom: 8px; }
+.pbanner {
+  position: relative; overflow: hidden; border-radius: 20px;
+  border: 1px solid var(--border); min-height: 220px;
+  display: flex; align-items: center;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+}
+.pbanner .pb-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.pbanner .pb-overlay { position: absolute; inset: 0; }
+.pbanner .pb-content { position: relative; z-index: 2; padding: 32px; max-width: 62%; }
+.pbanner .pb-title { font-size: 30px; font-weight: 900; letter-spacing: 1px; line-height: 1.05; text-transform: uppercase; }
+.pbanner .pb-sub { color: var(--muted); margin-top: 8px; font-size: 14px; }
+.pbanner .pb-price {
+  display: inline-block; margin-top: 12px; background: var(--accent); color: #000;
+  padding: 4px 12px; border-radius: 8px; font-weight: 800; font-size: 15px;
+}
+.pbanner .pb-cta { margin-top: 16px; }
+
+/* Template: hero — image fades in from the right */
+.pbanner.tpl-hero .pb-img { opacity: 0.6; mask-image: linear-gradient(to left, black 55%, transparent); -webkit-mask-image: linear-gradient(to left, black 55%, transparent); }
+.pbanner.tpl-hero .pb-title { color: #fff; }
+
+/* Template: sale — full dark overlay, gold headline */
+.pbanner.tpl-sale .pb-img { opacity: 0.5; }
+.pbanner.tpl-sale .pb-overlay { background: linear-gradient(90deg, rgba(10,10,10,0.9) 0%, rgba(10,10,10,0.55) 100%); }
+.pbanner.tpl-sale .pb-title { color: var(--accent); }
+
+/* Template: split — image on the left, content on the right */
+.pbanner.tpl-split { justify-content: flex-end; }
+.pbanner.tpl-split .pb-img { opacity: 0.7; mask-image: linear-gradient(to right, black 45%, transparent); -webkit-mask-image: linear-gradient(to right, black 45%, transparent); }
+.pbanner.tpl-split .pb-content { text-align: right; }
+.pbanner.tpl-split .pb-title { color: #fff; }
+
+/* Template: minimal — no photo, clean gradient */
+.pbanner.tpl-minimal .pb-img { display: none; }
+.pbanner.tpl-minimal { background: linear-gradient(135deg, var(--card) 0%, var(--card-2) 100%); min-height: 160px; }
+.pbanner.tpl-minimal .pb-title { color: var(--accent); }
+
+/* Admin banner manager: template picker + live preview */
+.banner-templates { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; }
+.banner-templates .bt {
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--muted); font-family: inherit;
+  text-transform: capitalize;
+}
+.banner-templates .bt.active { border-color: var(--accent); color: var(--accent); }
+
+@media (max-width: 768px) {
+  .pbanner .pb-content { max-width: 82%; padding: 22px; }
+  .pbanner .pb-title { font-size: 22px; }
 }

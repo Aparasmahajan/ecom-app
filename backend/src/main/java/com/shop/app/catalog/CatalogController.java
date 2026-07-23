@@ -41,6 +41,7 @@ public class CatalogController {
                 hotSeller,
                 nullIfBlank(q)
         ).stream()
+        .filter(Product::isListed) // hidden products never surface on the storefront
         .map(p -> ProductDto.of(p, ProductDtos.effectiveRating(p, reviews)))
         .toList();
     }

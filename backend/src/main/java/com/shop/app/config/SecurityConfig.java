@@ -60,6 +60,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/categories", "/products", "/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/products/*/reviews").permitAll()
                 .requestMatchers(HttpMethod.GET, "/combos", "/combos/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/banners", "/banners/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/settings").permitAll()
                 // Auth endpoints
                 .requestMatchers("/auth/**").permitAll()
                 // Health

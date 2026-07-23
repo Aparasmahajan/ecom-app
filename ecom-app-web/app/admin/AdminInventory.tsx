@@ -103,6 +103,7 @@ export default function AdminInventory() {
           <p style={{ marginTop: 6 }}>Try clearing the search or filter.</p>
         </div>
       ) : (
+        <div className="admin-table-wrap">
         <table>
           <thead>
             <tr>
@@ -152,6 +153,7 @@ export default function AdminInventory() {
             })}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

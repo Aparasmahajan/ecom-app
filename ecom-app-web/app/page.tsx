@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useApp } from '@/lib/context';
-import { api, ApiError, Category, Combo, Product } from '@/lib/api';
+import { api, ApiError, Banner, Category, Combo, Product } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import ComboCard from '@/components/ComboCard';
+import BannerStrip from '@/components/BannerStrip';
 import { HERO_IMAGE, chipImage } from '@/lib/images';
 
 export default function HomePage() {
@@ -13,19 +14,22 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [ps, cs, kb] = await Promise.all([
+        const [ps, cs, kb, bn] = await Promise.all([
           api.catalog.products({}),
           api.catalog.categories(),
-          api.catalog.combos()
+          api.catalog.combos(),
+          api.catalog.banners()
         ]);
         setProducts(ps);
         setCats(cs);
         setCombos(kb);
+        setBanners(bn);
       } catch (e) {
         toast('Failed to load: ' + (e instanceof ApiError ? e.message : (e as Error).message));
       } finally {
@@ -47,6 +51,13 @@ export default function HomePage() {
           <Link href="/products" className="btn">SHOP NOW</Link>
         </div>
       </div>
+
+      {/* Admin-curated landing banners (managed in Admin → Banners) */}
+      {banners.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <BannerStrip banners={banners} />
+        </div>
+      )}
 
       <div className="chip-row">
         {cats.map(c => (

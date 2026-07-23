@@ -8,6 +8,8 @@ import AdminOrders from './AdminOrders';
 import AdminAdmins from './AdminAdmins';
 import AdminCombos from './AdminCombos';
 import AdminInventory from './AdminInventory';
+import AdminListing from './AdminListing';
+import AdminBanners from './AdminBanners';
 
 function AdminDashboard() {
   const { user, ready } = useApp();
@@ -44,15 +46,19 @@ function AdminDashboard() {
         <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>Orders</button>
         <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>Products</button>
         <button className={tab === 'inventory' ? 'active' : ''} onClick={() => setTab('inventory')}>Inventory</button>
+        <button className={tab === 'listing' ? 'active' : ''} onClick={() => setTab('listing')}>Listing</button>
         <button className={tab === 'combos' ? 'active' : ''} onClick={() => setTab('combos')}>Combos</button>
+        <button className={tab === 'banners' ? 'active' : ''} onClick={() => setTab('banners')}>Banners</button>
         {isSuper && (
-          <button className={tab === 'admins' ? 'active' : ''} onClick={() => setTab('admins')}>Admins</button>
+          <button className={`super ${tab === 'admins' ? 'active' : ''}`} onClick={() => setTab('admins')}>Admins</button>
         )}
       </div>
       {tab === 'orders' && <AdminOrders />}
       {tab === 'products' && <AdminProducts />}
       {tab === 'inventory' && <AdminInventory />}
+      {tab === 'listing' && <AdminListing />}
       {tab === 'combos' && <AdminCombos />}
+      {tab === 'banners' && <AdminBanners />}
       {tab === 'admins' && isSuper && <AdminAdmins />}
       {tab === 'admins' && !isSuper && (
         <div className="empty">

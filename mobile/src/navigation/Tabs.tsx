@@ -5,6 +5,7 @@ import CategoriesScreen from '../screens/CategoriesScreen';
 import WishlistScreen from '../screens/WishlistScreen';
 import CartScreen from '../screens/CartScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import AdminScreen from '../screens/admin/AdminScreen';
 import { colors } from '../theme';
 import { useApp } from '../state/store';
 
@@ -72,6 +73,11 @@ export default function Tabs() {
         name="Profile"
         component={ProfileScreen}
         options={{ tabBarIcon: ({ focused }) => <TabIcon char="👤" focused={focused} /> }}
+      />
+      <Tab.Screen
+        name="Admin"
+        component={AdminScreen}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon char="🛠️" focused={focused} /> }}
       />
     </Tab.Navigator>
   );

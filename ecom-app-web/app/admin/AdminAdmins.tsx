@@ -52,6 +52,7 @@ export default function AdminAdmins() {
       </div>
 
       {loading ? <p className="empty">Loading admins…</p> : (
+        <div className="admin-table-wrap">
         <table>
           <thead>
             <tr>
@@ -96,6 +97,7 @@ export default function AdminAdmins() {
             })}
           </tbody>
         </table>
+        </div>
       )}
 
       {showAdd && (

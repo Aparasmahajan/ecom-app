@@ -31,6 +31,14 @@ public class AdminCatalogController {
     private final CloudinaryService cloudinary;
 
     // ---------- Products ----------
+    /** All products including unlisted ones (public /products hides those). */
+    @GetMapping("/products")
+    public List<ProductDto> listAll() {
+        return products.findAll().stream()
+                .map(p -> ProductDto.of(p, ProductDtos.effectiveRating(p, reviews)))
+                .toList();
+    }
+
     @PostMapping("/products")
     public ProductDto create(@Valid @RequestBody ProductCreateBody body) {
         var p = Product.builder()
@@ -78,6 +86,16 @@ public class AdminCatalogController {
     public ProductDto setRatingOverride(@PathVariable UUID id, @RequestBody RatingOverrideBody body) {
         var p = products.findById(id).orElseThrow(() -> new NotFoundException("product"));
         p.setAdminRatingOverride(body.stars()); // null clears the override
+        p = products.save(p);
+        return ProductDto.of(p, ProductDtos.effectiveRating(p, reviews));
+    }
+
+    /** Listing tab — storefront visibility + advertised quantity (separate from stock). */
+    @PutMapping("/products/{id}/listing")
+    public ProductDto setListing(@PathVariable UUID id, @Valid @RequestBody ListingBody body) {
+        var p = products.findById(id).orElseThrow(() -> new NotFoundException("product"));
+        if (body.listed() != null)       p.setListed(body.listed());
+        if (body.listQuantity() != null) p.setListQuantity(body.listQuantity());
         p = products.save(p);
         return ProductDto.of(p, ProductDtos.effectiveRating(p, reviews));
     }

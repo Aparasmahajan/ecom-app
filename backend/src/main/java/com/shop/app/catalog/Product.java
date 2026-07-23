@@ -47,6 +47,16 @@ public class Product {
     @Column(name = "is_hot_seller", nullable = false)
     private boolean hotSeller;
 
+    /** Whether the product is shown on the public storefront (V6). */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean listed = true;
+
+    /** Units the admin advertises on the site — independent of real stock (V6). */
+    @Builder.Default
+    @Column(name = "list_quantity", nullable = false)
+    private int listQuantity = 0;
+
     @Column(name = "admin_rating_override", precision = 2, scale = 1)
     private BigDecimal adminRatingOverride;
 

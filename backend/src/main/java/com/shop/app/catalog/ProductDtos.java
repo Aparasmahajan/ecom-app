@@ -37,6 +37,8 @@ public final class ProductDtos {
             BigDecimal basePrice,
             List<String> images,
             boolean hotSeller,
+            boolean listed,
+            int listQuantity,
             BigDecimal adminRatingOverride,
             BigDecimal effectiveRating,
             List<VariantDto> variants
@@ -48,6 +50,8 @@ public final class ProductDtos {
                     p.getBasePrice(),
                     List.of(p.getImages()),
                     p.isHotSeller(),
+                    p.isListed(),
+                    p.getListQuantity(),
                     p.getAdminRatingOverride(),
                     effectiveRating,
                     p.getVariants().stream().map(VariantDto::of).toList()
@@ -85,6 +89,12 @@ public final class ProductDtos {
     public record HotSellerBody(boolean isHotSeller) {}
     public record RatingOverrideBody(
             @DecimalMin("0.0") @DecimalMax("5.0") BigDecimal stars
+    ) {}
+
+    /** Storefront visibility / advertised quantity — the admin "Listing" tab. */
+    public record ListingBody(
+            Boolean listed,
+            @Min(0) Integer listQuantity
     ) {}
 
     /** Compute effective rating (admin override wins, else avg of user reviews). */

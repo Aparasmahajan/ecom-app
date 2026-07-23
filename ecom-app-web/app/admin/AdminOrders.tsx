@@ -21,6 +21,21 @@ const STATUS_LABEL: Record<StatusFilter, string> = {
   REFUNDED: 'Refunded'
 };
 
+/** Next status when the admin clicks "advance" on a board card. */
+const ADVANCE_TO: Record<string, string> = {
+  CREATED: 'PAID', PAID: 'PROCESSING', PROCESSING: 'SHIPPED', SHIPPED: 'DELIVERED'
+};
+
+/** Kanban columns — each groups one or more real statuses. Keeps the existing
+ *  status model intact while giving a To-do → In progress → Done board. */
+const BOARD_COLUMNS: Array<{ key: string; title: string; statuses: string[] }> = [
+  { key: 'new',        title: 'New / To-do',  statuses: ['CREATED', 'PAID'] },
+  { key: 'processing', title: 'In Progress',  statuses: ['PROCESSING'] },
+  { key: 'shipped',    title: 'Shipped',      statuses: ['SHIPPED'] },
+  { key: 'delivered',  title: 'Delivered',    statuses: ['DELIVERED'] },
+  { key: 'closed',     title: 'Closed',       statuses: ['CANCELLED', 'REFUNDED'] }
+];
+
 export default function AdminOrders() {
   const { toast } = useApp();
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -30,6 +45,7 @@ export default function AdminOrders() {
   const [status, setStatus] = useState<StatusFilter>('ALL');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<SortKey>('newest');
+  const [view, setView] = useState<'list' | 'board'>('list');
 
   const reload = async () => {
     setLoading(true);
@@ -72,11 +88,42 @@ export default function AdminOrders() {
 
   const patchLocal = (updated: AdminOrder) => {
     setOrders(prev => prev.map(o => (o.id === updated.id ? updated : o)));
-    setSelected(updated);
+    setSelected(prev => (prev && prev.id === updated.id ? updated : prev));
+  };
+
+  /** Search-only list for the board (columns already partition by status). */
+  const searched = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    const list = orders.filter(o =>
+      !term
+      || o.id.toLowerCase().includes(term)
+      || (o.customer?.name || '').toLowerCase().includes(term)
+      || (o.customer?.email || '').toLowerCase().includes(term)
+      || (o.trackingNumber || '').toLowerCase().includes(term)
+    );
+    return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [orders, q]);
+
+  const advance = async (o: AdminOrder, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = ADVANCE_TO[o.status];
+    if (!next) return;
+    try {
+      const updated = await api.admin.orders.setStatus(o.id, next);
+      patchLocal(updated);
+      toast(`#${o.id.slice(-6).toUpperCase()} → ${next}`);
+    } catch (err) {
+      toast('Failed: ' + (err instanceof ApiError ? err.message : (err as Error).message));
+    }
   };
 
   return (
     <>
+      <div className="ao-viewtoggle">
+        <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')}>List</button>
+        <button className={view === 'board' ? 'active' : ''} onClick={() => setView('board')}>Board</button>
+      </div>
+
       <div className="ao-toolbar">
         <input
           className="ao-search"
@@ -92,20 +139,24 @@ export default function AdminOrders() {
         </select>
       </div>
 
-      <div className="ao-status-row">
-        {STATUS_TABS.map(s => (
-          <button
-            key={s}
-            className={`ao-status-chip ${status === s ? 'active' : ''}`}
-            onClick={() => setStatus(s)}
-          >
-            {STATUS_LABEL[s]}<span className="count">{counts[s] || 0}</span>
-          </button>
-        ))}
-      </div>
+      {view === 'list' && (
+        <div className="ao-status-row">
+          {STATUS_TABS.map(s => (
+            <button
+              key={s}
+              className={`ao-status-chip ${status === s ? 'active' : ''}`}
+              onClick={() => setStatus(s)}
+            >
+              {STATUS_LABEL[s]}<span className="count">{counts[s] || 0}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="ao-empty">Loading orders…</div>
+      ) : view === 'board' ? (
+        <OrderBoard orders={searched} onSelect={setSelected} onAdvance={advance} />
       ) : filtered.length === 0 ? (
         <div className="ao-empty">
           <h3>No orders match</h3>
@@ -182,6 +233,57 @@ export default function AdminOrders() {
         />
       )}
     </>
+  );
+}
+
+/* -------------------- Kanban board -------------------- */
+
+function OrderBoard({
+  orders, onSelect, onAdvance
+}: {
+  orders: AdminOrder[];
+  onSelect: (o: AdminOrder) => void;
+  onAdvance: (o: AdminOrder, e: React.MouseEvent) => void;
+}) {
+  return (
+    <div className="kanban">
+      {BOARD_COLUMNS.map(col => {
+        const items = orders.filter(o => col.statuses.includes(o.status));
+        return (
+          <div key={col.key} className="kanban-col">
+            <div className="kc-head">
+              <span>{col.title}</span>
+              <span className="kc-count">{items.length}</span>
+            </div>
+            <div className="kc-body">
+              {items.length === 0 ? (
+                <div className="kanban-empty">No orders</div>
+              ) : items.map(o => {
+                const next = ADVANCE_TO[o.status];
+                return (
+                  <div key={o.id} className="kanban-card" onClick={() => onSelect(o)}>
+                    <div className="kc-top">
+                      <span className="kc-id">#{o.id.slice(-6).toUpperCase()}</span>
+                      <span className="kc-total">{money(o.total)}</span>
+                    </div>
+                    <div className="kc-cust">{o.customer?.name || '—'}</div>
+                    <div className="kc-meta">
+                      <span className={`status-pill status-${o.status}`}>{o.status}</span>
+                      {' · '}{o.items.length} item{o.items.length === 1 ? '' : 's'}
+                    </div>
+                    {next && (
+                      <button className="kc-advance" onClick={(e) => onAdvance(o, e)}>
+                        Move to {next} →
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

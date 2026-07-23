@@ -38,6 +38,11 @@ export interface Product {
   images: string[]; hotSeller: boolean;
   adminRatingOverride: number | null; effectiveRating: number;
   variants: Variant[];
+  /** Whether the product is shown on the public storefront. Default true. */
+  listed: boolean;
+  /** How many units the admin wants to advertise on the site — independent of
+   *  real inventory stock (lets admins list items "outside inventory"). */
+  listQuantity: number;
 }
 export interface Address {
   id: string; fullName: string; phone: string; line1: string; line2?: string;
@@ -96,6 +101,46 @@ export interface InventoryRow {
   basePrice: number;
 }
 
+/** Product row surfaced on the admin Listing tab (storefront visibility). */
+export interface ListingRow {
+  productId: string;
+  productName: string;
+  productImage: string | null;
+  categoryId: string;
+  basePrice: number;
+  listed: boolean;
+  listQuantity: number;
+  /** Sum of real inventory stock across variants — shown for reference. */
+  totalStock: number;
+}
+
+/** Default banner templates the admin can pick from. Each maps to a layout
+ *  rendered by the storefront <BannerStrip/>. */
+export type BannerTemplate = 'hero' | 'sale' | 'split' | 'minimal';
+
+/** A landing-page banner. Admin picks a template, then fills image + copy
+ *  (and optionally a price to feature). */
+export interface Banner {
+  id: string;
+  template: BannerTemplate;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  /** Optional featured price text, e.g. "₹999" — blank hides the price chip. */
+  price: string;
+  ctaText: string;
+  ctaHref: string;
+  active: boolean;
+  position: number;
+  createdAt: string;
+}
+
+/** Global storefront settings the admin controls. */
+export interface Settings {
+  /** How many active banners to show on the home page (0 hides the strip). */
+  homeBannerCount: number;
+}
+
 /* ---------------------------------------------------------------- Errors */
 export class ApiError extends Error {
   code: string;
@@ -114,13 +159,17 @@ const K = {
   PRODUCTS:   'cw_products',
   CATEGORIES: 'cw_categories',
   COMBOS:     'cw_combos',
+  BANNERS:    'cw_banners',
+  SETTINGS:   'cw_settings',
   REVIEWS:    'cw_reviews',
-  SEEDED:     'cw_seeded_static_v1',
+  SEEDED:     'cw_seeded_static_v2',
   CART:       'cw_cart',
   WISH:       'cw_wish',
   ORDERS:     'cw_orders',
   ADDRS:      'cw_addrs'
 };
+
+const DEFAULT_SETTINGS: Settings = { homeBannerCount: 3 };
 
 const isBrowser = () => typeof window !== 'undefined';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -189,7 +238,9 @@ const CATEGORY_IMAGES: Record<string, string[]> = {
   tshirts: ['1521572163474-6864f9cf17ab', '1503341504253-dff4815485f1', '1583743814966-8936f5b7be1a', '1618354691373-d851c5c3a990'],
   jeans:   ['1542272604-787c3835535d', '1541099649105-f69ad21f3246', '1582418702059-97ebafb35d09'],
   hoodies: ['1556821840-3a63f95609a7', '1620799140408-edc6dcb6d633', '1552374196-c4e7ffc6e126'],
-  coords:  ['1617137968427-85924c800a22', '1594938298603-c8148c4dae35', '1490481651871-ab68de25d43d']
+  coords:  ['1617137968427-85924c800a22', '1594938298603-c8148c4dae35', '1490481651871-ab68de25d43d'],
+  shoes:   ['1542291026-7eec264c27ff', '1600185365483-26d7a4cc7519', '1595950653106-6c9ebd614d3a', '1606107557195-0e29a4b5b4aa'],
+  girls:   ['1515372039744-b8f02a3ae446', '1483985988355-763728e1935b', '1485462537746-965f33f7f6a7', '1502716119720-b23a93e5fe1b']
 };
 
 function productImageTrio(categoryId: string, index: number): string[] {
@@ -221,7 +272,9 @@ function ensureSeeded() {
     { id: 'tshirts', name: 'T-Shirts',    gender: 'UNISEX', ageGroup: 'ADULT', emoji: '👕' },
     { id: 'jeans',   name: 'Jeans',       gender: 'UNISEX', ageGroup: 'ADULT', emoji: '👖' },
     { id: 'hoodies', name: 'Hoodies',     gender: 'UNISEX', ageGroup: 'ADULT', emoji: '🧥' },
-    { id: 'coords',  name: 'Co-ord Sets', gender: 'UNISEX', ageGroup: 'ADULT', emoji: '🕴️' }
+    { id: 'coords',  name: 'Co-ord Sets', gender: 'UNISEX', ageGroup: 'ADULT', emoji: '🕴️' },
+    { id: 'shoes',   name: 'Shoes',        gender: 'UNISEX', ageGroup: 'ADULT', emoji: '👟' },
+    { id: 'girls',   name: 'Girls Outfit', gender: 'FEMALE', ageGroup: 'KIDS',  emoji: '👗' }
   ];
   write(K.CATEGORIES, categories);
 
@@ -240,22 +293,36 @@ function ensureSeeded() {
     ['hoodies', 1, 'Streetwear Hoodie',    'Oversized streetwear hoodie with statement print.',               1699, true,  ['S','M','L','XL','XXL']],
     ['hoodies', 2, 'Zip-up Hoodie',        'Everyday zip-up hoodie in ultra-soft cotton.',                    1799, false, ['S','M','L','XL']],
     ['coords',  0, 'Beige Co-ord Set',     'Premium coordinated set — shirt + trousers in beige.',            2499, true,  ['S','M','L','XL']],
-    ['coords',  1, 'Neutral Co-ord Set',   'Neutral-tone co-ord set with tailored finish.',                   2699, false, ['S','M','L','XL']]
+    ['coords',  1, 'Neutral Co-ord Set',   'Neutral-tone co-ord set with tailored finish.',                   2699, false, ['S','M','L','XL']],
+    ['shoes',   0, 'Classic Sneakers',     'Everyday low-top sneakers with cushioned sole.',                  1999, true,  ['6','7','8','9','10']],
+    ['shoes',   1, 'Retro Runners',        'Retro-styled running shoes with a breathable knit upper.',        2299, true,  ['6','7','8','9','10','11']],
+    ['shoes',   2, 'White Court Shoes',    'Minimal white court shoes — pairs with everything.',              2499, false, ['6','7','8','9','10']],
+    ['shoes',   3, 'High-Top Kicks',       'Street-ready high-top sneakers with ankle support.',              2699, false, ['7','8','9','10','11']],
+    ['girls',   0, 'Floral Summer Dress',  'Breezy floral dress for girls — soft cotton, easy fit.',          899,  true,  ['2-3Y','4-5Y','6-7Y','8-9Y']],
+    ['girls',   1, 'Denim Pinafore',       'Cute denim pinafore dress, adjustable straps.',                   1099, true,  ['2-3Y','4-5Y','6-7Y','8-9Y']],
+    ['girls',   2, 'Party Frock',          'Layered party frock with a satin bow.',                           1399, false, ['2-3Y','4-5Y','6-7Y']],
+    ['girls',   3, 'Coord Top & Skirt',    'Matching top-and-skirt set in pastel tones.',                     1199, false, ['4-5Y','6-7Y','8-9Y']]
   ];
 
-  const products: Product[] = productSpecs.map(([categoryId, idx, name, desc, price, hot, sizes]) => ({
-    id: uid(),
-    name: name as string,
-    description: desc as string,
-    categoryId: categoryId as string,
-    gender: 'UNISEX', ageGroup: 'ADULT',
-    basePrice: price as number,
-    images: productImageTrio(categoryId as string, idx as number),
-    hotSeller: hot as boolean,
-    adminRatingOverride: null,
-    effectiveRating: 0,
-    variants: makeVariants(sizes as string[])
-  }));
+  const products: Product[] = productSpecs.map(([categoryId, idx, name, desc, price, hot, sizes]) => {
+    const cat = categories.find(c => c.id === categoryId)!;
+    const variants = makeVariants(sizes as string[]);
+    return {
+      id: uid(),
+      name: name as string,
+      description: desc as string,
+      categoryId: categoryId as string,
+      gender: cat.gender, ageGroup: cat.ageGroup,
+      basePrice: price as number,
+      images: productImageTrio(categoryId as string, idx as number),
+      hotSeller: hot as boolean,
+      adminRatingOverride: null,
+      effectiveRating: 0,
+      variants,
+      listed: true,
+      listQuantity: variants.reduce((a, v) => a + v.stock, 0)
+    };
+  });
   write(K.PRODUCTS, products);
 
   const byName = (n: string) => products.find(p => p.name === n)!;
@@ -293,8 +360,39 @@ function ensureSeeded() {
   ];
   write(K.COMBOS, combos);
 
+  const banners: Banner[] = [
+    {
+      id: uid(), template: 'hero',
+      title: 'NEW SEASON DROP', subtitle: 'Fresh fits for every day',
+      imageUrl: IMG('1490481651871-ab68de25d43d', 1200),
+      price: '', ctaText: 'Shop Now', ctaHref: '/products',
+      active: true, position: 0, createdAt: now()
+    },
+    {
+      id: uid(), template: 'sale',
+      title: 'END OF SEASON SALE', subtitle: 'Up to 50% off on hoodies & co-ords',
+      imageUrl: IMG('1556821840-3a63f95609a7', 1200),
+      price: '₹999', ctaText: 'Grab Deals', ctaHref: '/products?categoryId=hoodies',
+      active: true, position: 1, createdAt: now()
+    },
+    {
+      id: uid(), template: 'split',
+      title: 'STEP INTO STYLE', subtitle: 'New sneakers just landed',
+      imageUrl: IMG('1542291026-7eec264c27ff', 1200),
+      price: '₹1999', ctaText: 'Shop Shoes', ctaHref: '/products?categoryId=shoes',
+      active: true, position: 2, createdAt: now()
+    }
+  ];
+  write(K.BANNERS, banners);
+  write(K.SETTINGS, DEFAULT_SETTINGS);
+
   localStorage.setItem(K.SEEDED, '1');
   seeded = true;
+}
+
+/* ---------------------------------------------------------------- Settings */
+function readSettings(): Settings {
+  return { ...DEFAULT_SETTINGS, ...(readOne<Settings>(K.SETTINGS) || {}) };
 }
 
 /* ---------------------------------------------------------------- Helpers */
@@ -470,6 +568,7 @@ export const api = {
       const q = (params.q || '').toLowerCase();
       return readList<Product>(K.PRODUCTS)
         .filter(p =>
+          p.listed !== false && // hidden products never surface on the storefront
           (!params.categoryId || p.categoryId === params.categoryId) &&
           (params.hotSeller === undefined || p.hotSeller === params.hotSeller) &&
           (!q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
@@ -492,6 +591,17 @@ export const api = {
       const c = readList<Combo>(K.COMBOS).find(x => x.id === id);
       if (!c) throw new ApiError(404, 'not_found', 'Combo not found');
       return c;
+    },
+
+    /** Active landing-page banners, ordered by position, limited by the
+     *  admin's homeBannerCount setting. */
+    banners: async (): Promise<Banner[]> => {
+      ensureSeeded();
+      const limit = readSettings().homeBannerCount;
+      return readList<Banner>(K.BANNERS)
+        .filter(b => b.active)
+        .sort((a, b) => a.position - b.position)
+        .slice(0, Math.max(0, limit));
     }
   },
 
@@ -666,6 +776,12 @@ export const api = {
   /* -------- Admin -------- */
   admin: {
     products: {
+      /** Every product, including unlisted ones (catalog.products hides those). */
+      list: async (): Promise<Product[]> => {
+        requireAdmin();
+        ensureSeeded();
+        return readList<Product>(K.PRODUCTS).map(hydrate);
+      },
       create: async (body: Partial<Product>): Promise<Product> => {
         requireAdmin();
         const list = readList<Product>(K.PRODUCTS);
@@ -680,7 +796,9 @@ export const api = {
           hotSeller: !!body.hotSeller,
           adminRatingOverride: body.adminRatingOverride ?? null,
           effectiveRating: 0,
-          variants: makeVariants(['S','M','L','XL'])
+          variants: makeVariants(['S','M','L','XL']),
+          listed: body.listed ?? true,
+          listQuantity: body.listQuantity ?? 80
         };
         list.push(product);
         write(K.PRODUCTS, list);
@@ -905,6 +1023,110 @@ export const api = {
         }
         throw new ApiError(404, 'not_found', 'Variant not found');
       }
+    },
+
+    /* -------- NEW: Listing (storefront visibility, separate from inventory) -------- */
+    listing: {
+      list: async (): Promise<ListingRow[]> => {
+        requireAdmin();
+        ensureSeeded();
+        return readList<Product>(K.PRODUCTS).map(p => ({
+          productId: p.id,
+          productName: p.name,
+          productImage: p.images[0] || null,
+          categoryId: p.categoryId,
+          basePrice: p.basePrice,
+          listed: p.listed !== false,
+          listQuantity: p.listQuantity ?? 0,
+          totalStock: p.variants.reduce((a, v) => a + v.stock, 0)
+        }));
+      },
+      setListed: async (productId: string, listed: boolean): Promise<ListingRow> => {
+        requireAdmin();
+        return patchListing(productId, p => { p.listed = listed; });
+      },
+      setListQuantity: async (productId: string, listQuantity: number): Promise<ListingRow> => {
+        requireAdmin();
+        if (listQuantity < 0) throw new ApiError(400, 'bad_request', 'List quantity cannot be negative');
+        return patchListing(productId, p => { p.listQuantity = Math.floor(listQuantity); });
+      }
+    },
+
+    /* -------- NEW: Banners (landing-page banner manager) -------- */
+    banners: {
+      list: async (): Promise<Banner[]> => {
+        requireAdmin();
+        ensureSeeded();
+        return readList<Banner>(K.BANNERS).sort((a, b) => a.position - b.position);
+      },
+      create: async (body: Partial<Banner>): Promise<Banner> => {
+        requireAdmin();
+        const list = readList<Banner>(K.BANNERS);
+        const banner: Banner = {
+          id: uid(),
+          template: (body.template as BannerTemplate) || 'hero',
+          title: body.title || 'New Banner',
+          subtitle: body.subtitle || '',
+          imageUrl: body.imageUrl || IMG('1490481651871-ab68de25d43d', 1200),
+          price: body.price || '',
+          ctaText: body.ctaText || 'Shop Now',
+          ctaHref: body.ctaHref || '/products',
+          active: body.active ?? true,
+          position: body.position ?? list.length,
+          createdAt: new Date().toISOString()
+        };
+        list.push(banner);
+        write(K.BANNERS, list);
+        return banner;
+      },
+      update: async (id: string, body: Partial<Banner>): Promise<Banner> => {
+        requireAdmin();
+        const list = readList<Banner>(K.BANNERS);
+        const b = list.find(x => x.id === id);
+        if (!b) throw new ApiError(404, 'not_found', 'Banner not found');
+        Object.assign(b, body);
+        write(K.BANNERS, list);
+        return b;
+      },
+      remove: async (id: string) => {
+        requireAdmin();
+        write(K.BANNERS, readList<Banner>(K.BANNERS).filter(b => b.id !== id));
+      }
+    },
+
+    /* -------- NEW: Settings (storefront controls) -------- */
+    settings: {
+      get: async (): Promise<Settings> => {
+        requireAdmin();
+        ensureSeeded();
+        return readSettings();
+      },
+      update: async (body: Partial<Settings>): Promise<Settings> => {
+        requireAdmin();
+        const next = { ...readSettings(), ...body };
+        if (next.homeBannerCount < 0) next.homeBannerCount = 0;
+        write(K.SETTINGS, next);
+        return next;
+      }
     }
   }
 };
+
+/** Mutate a product's listing fields and return its ListingRow. */
+function patchListing(productId: string, mutate: (p: Product) => void): ListingRow {
+  const list = readList<Product>(K.PRODUCTS);
+  const p = list.find(x => x.id === productId);
+  if (!p) throw new ApiError(404, 'not_found', 'Product not found');
+  mutate(p);
+  write(K.PRODUCTS, list);
+  return {
+    productId: p.id,
+    productName: p.name,
+    productImage: p.images[0] || null,
+    categoryId: p.categoryId,
+    basePrice: p.basePrice,
+    listed: p.listed !== false,
+    listQuantity: p.listQuantity ?? 0,
+    totalStock: p.variants.reduce((a, v) => a + v.stock, 0)
+  };
+}

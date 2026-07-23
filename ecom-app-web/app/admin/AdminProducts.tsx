@@ -17,7 +17,7 @@ export default function AdminProducts() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [ps, cs] = await Promise.all([api.catalog.products({}), api.catalog.categories()]);
+      const [ps, cs] = await Promise.all([api.admin.products.list(), api.catalog.categories()]);
       setProducts(ps);
       setCats(cs);
     } catch (e) {
@@ -64,6 +64,7 @@ export default function AdminProducts() {
         <button className="btn" onClick={() => setEditing(null)}>+ Add Product</button>
       </div>
       {loading ? <p className="empty">Loading products…</p> : (
+        <div className="admin-table-wrap">
         <table>
           <thead>
             <tr>
@@ -103,6 +104,7 @@ export default function AdminProducts() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {editing !== undefined && (
