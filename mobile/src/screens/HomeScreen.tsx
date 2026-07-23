@@ -4,9 +4,10 @@ import { useNavigation } from '@react-navigation/native';
 import Screen from '../components/Screen';
 import ProductCard from '../components/ProductCard';
 import ComboCard from '../components/ComboCard';
+import BannerCard from '../components/BannerCard';
 import Brand from '../components/Brand';
 import Button from '../components/Button';
-import { api, Category, Combo, Product } from '../lib/api';
+import { api, Banner, Category, Combo, Product } from '../lib/api';
 import { HERO_IMAGE, chipImage } from '../lib/images';
 import { colors, radii } from '../theme';
 
@@ -15,19 +16,22 @@ export default function HomeScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [ps, cs, kb] = await Promise.all([
+        const [ps, cs, kb, bn] = await Promise.all([
           api.catalog.products({}),
           api.catalog.categories(),
-          api.catalog.combos()
+          api.catalog.combos(),
+          api.catalog.banners().catch(() => [])
         ]);
         setProducts(ps);
         setCats(cs);
         setCombos(kb);
+        setBanners(bn);
       } catch {
         // Backend unreachable — screen shows empty state.
       } finally { setLoading(false); }
@@ -49,6 +53,12 @@ export default function HomeScreen() {
           <Button title="SHOP NOW" onPress={() => navigation.navigate('Products', {})} style={{ alignSelf: 'flex-start', marginTop: 8 }} />
         </View>
       </ImageBackground>
+
+      {banners.length > 0 && (
+        <View style={{ marginBottom: 8 }}>
+          {banners.map(b => <BannerCard key={b.id} banner={b} />)}
+        </View>
+      )}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         {cats.map(c => (

@@ -14,6 +14,13 @@ import AddressesScreen from './src/screens/AddressesScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
 import OrdersScreen from './src/screens/OrdersScreen';
 import OrderDetailScreen from './src/screens/OrderDetailScreen';
+import AdminOrders from './src/screens/admin/AdminOrders';
+import AdminProducts from './src/screens/admin/AdminProducts';
+import AdminInventory from './src/screens/admin/AdminInventory';
+import AdminListing from './src/screens/admin/AdminListing';
+import AdminCombos from './src/screens/admin/AdminCombos';
+import AdminBanners from './src/screens/admin/AdminBanners';
+import AdminAdmins from './src/screens/admin/AdminAdmins';
 
 import { useApp } from './src/state/store';
 import { colors } from './src/theme';
@@ -68,6 +75,13 @@ export default function App() {
             <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'Checkout' }} />
             <Stack.Screen name="Orders" component={OrdersScreen} options={{ title: 'My Orders' }} />
             <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ title: 'Order' }} />
+            <Stack.Screen name="AdminOrders" component={AdminOrders} options={{ title: 'Orders · Admin' }} />
+            <Stack.Screen name="AdminProducts" component={AdminProducts} options={{ title: 'Products · Admin' }} />
+            <Stack.Screen name="AdminInventory" component={AdminInventory} options={{ title: 'Inventory · Admin' }} />
+            <Stack.Screen name="AdminListing" component={AdminListing} options={{ title: 'Listing · Admin' }} />
+            <Stack.Screen name="AdminCombos" component={AdminCombos} options={{ title: 'Combos · Admin' }} />
+            <Stack.Screen name="AdminBanners" component={AdminBanners} options={{ title: 'Banners · Admin' }} />
+            <Stack.Screen name="AdminAdmins" component={AdminAdmins} options={{ title: 'Admins · Admin' }} />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

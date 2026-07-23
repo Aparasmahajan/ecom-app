@@ -21,7 +21,7 @@ export default function AdminCombos() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [cs, ps] = await Promise.all([api.admin.combos.list(), api.catalog.products({})]);
+      const [cs, ps] = await Promise.all([api.admin.combos.list(), api.admin.products.list()]);
       setCombos(cs);
       setProducts(ps);
     } catch (e) {
@@ -60,6 +60,7 @@ export default function AdminCombos() {
           <p style={{ marginTop: 6 }}>Bundle products together and offer a discounted total.</p>
         </div>
       ) : (
+        <div className="admin-table-wrap">
         <table>
           <thead>
             <tr>
@@ -103,6 +104,7 @@ export default function AdminCombos() {
             })}
           </tbody>
         </table>
+        </div>
       )}
 
       {editing !== undefined && (

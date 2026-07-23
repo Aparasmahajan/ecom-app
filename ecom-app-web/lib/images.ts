@@ -41,6 +41,18 @@ const IDS: Record<string, string[]> = {
     '1594938298603-c8148c4dae35', // matching outfit
     '1490481651871-ab68de25d43d', // styled fashion look
     '1490481651871-ab68de25d43d'  // fallback
+  ],
+  shoes: [
+    '1542291026-7eec264c27ff',    // red sneakers
+    '1600185365483-26d7a4cc7519', // white sneaker
+    '1595950653106-6c9ebd614d3a', // sneaker pair
+    '1606107557195-0e29a4b5b4aa'  // shoes flat lay
+  ],
+  girls: [
+    '1515372039744-b8f02a3ae446', // girl in dress
+    '1483985988355-763728e1935b', // fashion kid
+    '1485462537746-965f33f7f6a7', // party dress
+    '1502716119720-b23a93e5fe1b'  // outfit look
   ]
 };
 
