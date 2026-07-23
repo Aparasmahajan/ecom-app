@@ -59,6 +59,7 @@ public class SecurityConfig {
                 // Public reads
                 .requestMatchers(HttpMethod.GET, "/categories", "/products", "/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/products/*/reviews").permitAll()
+                .requestMatchers(HttpMethod.GET, "/combos", "/combos/**").permitAll()
                 // Auth endpoints
                 .requestMatchers("/auth/**").permitAll()
                 // Health

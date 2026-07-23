@@ -116,6 +116,11 @@ export interface Order {
   shipping: { fullName: string; phone: string; line1: string; line2?: string; city: string; state: string; pincode: string };
   items: Array<{ productId: string; variantId: string; productNameSnapshot: string; size: string; quantity: number; unitPrice: number; note: string; image: string | null }>;
 }
+export interface Combo {
+  id: string; name: string; description: string; image: string;
+  productIds: string[]; comboPrice: number; isActive: boolean;
+  createdAt: string;
+}
 
 export const api = {
   auth: {
@@ -152,7 +157,9 @@ export const api = {
       const s = qs.toString();
       return request<Product[]>('GET', `/products${s ? `?${s}` : ''}`);
     },
-    product:    (id: string) => request<Product>('GET', `/products/${id}`)
+    product:    (id: string) => request<Product>('GET', `/products/${id}`),
+    combos:     () => request<Combo[]>('GET', '/combos'),
+    combo:      (id: string) => request<Combo>('GET', `/combos/${id}`)
   },
   cart: {
     list:   () => request<CartItem[]>('GET', '/cart'),

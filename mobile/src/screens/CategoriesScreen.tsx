@@ -2,18 +2,24 @@ import { useEffect, useState } from 'react';
 import { View, Text, ImageBackground, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Screen from '../components/Screen';
-import { api, Category } from '../lib/api';
+import ComboCard from '../components/ComboCard';
+import { api, Category, Combo } from '../lib/api';
 import { bannerImage } from '../lib/images';
 import { colors, radii } from '../theme';
 
 export default function CategoriesScreen() {
   const nav = useNavigation<any>();
   const [cats, setCats] = useState<Category[]>([]);
+  const [combos, setCombos] = useState<Combo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      try { setCats(await api.catalog.categories()); }
+      try {
+        const [cs, kb] = await Promise.all([api.catalog.categories(), api.catalog.combos()]);
+        setCats(cs);
+        setCombos(kb);
+      }
       catch { /* empty */ }
       finally { setLoading(false); }
     })();
@@ -39,6 +45,13 @@ export default function CategoriesScreen() {
           </ImageBackground>
         </Pressable>
       ))}
+
+      {!loading && combos.length > 0 && (
+        <>
+          <Text style={[styles.h1, { marginTop: 24 }]}>CURATED COMBOS</Text>
+          {combos.map(c => <ComboCard key={c.id} combo={c} />)}
+        </>
+      )}
     </Screen>
   );
 }

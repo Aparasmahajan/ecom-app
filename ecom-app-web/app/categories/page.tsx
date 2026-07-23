@@ -3,17 +3,23 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useApp } from '@/lib/context';
-import { api, ApiError, Category } from '@/lib/api';
+import { api, ApiError, Category, Combo } from '@/lib/api';
+import ComboCard from '@/components/ComboCard';
 import { bannerImage } from '@/lib/images';
 
 export default function CategoriesPage() {
   const { toast } = useApp();
   const [cats, setCats] = useState<Category[]>([]);
+  const [combos, setCombos] = useState<Combo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      try { setCats(await api.catalog.categories()); }
+      try {
+        const [cs, kb] = await Promise.all([api.catalog.categories(), api.catalog.combos()]);
+        setCats(cs);
+        setCombos(kb);
+      }
       catch (e) { toast('Failed to load: ' + (e instanceof ApiError ? e.message : (e as Error).message)); }
       finally { setLoading(false); }
     })();
@@ -36,6 +42,19 @@ export default function CategoriesPage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {/* Combos footer section — admin-curated bundles */}
+      {combos.length > 0 && (
+        <>
+          <div className="section-title">
+            <h2>Curated Combos 🎁</h2>
+            <span style={{ color: 'var(--muted)', fontSize: 13 }}>Bundle & save</span>
+          </div>
+          <div className="combo-grid">
+            {combos.map(c => <ComboCard key={c.id} combo={c} />)}
+          </div>
+        </>
       )}
     </>
   );
