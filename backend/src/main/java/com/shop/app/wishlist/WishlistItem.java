@@ -22,6 +22,12 @@ public class WishlistItem {
     @Column(name = "product_id", nullable = false)
     private UUID productId;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) createdAt = OffsetDateTime.now();
+    }
 }

@@ -29,6 +29,12 @@ public class Category {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) createdAt = OffsetDateTime.now();
+    }
 }

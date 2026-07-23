@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, Alert, Pressable, ActivityIndicator } fr
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Screen from '../components/Screen';
 import Button from '../components/Button';
-import { api, ApiError, CartItem, Address } from '../lib/api';
+import { api, CartItem } from '../lib/api';
 import { colors, radii, money } from '../theme';
 import { useApp } from '../state/store';
 
@@ -42,28 +42,7 @@ export default function CartScreen() {
 
   const subtotal = cart.reduce((a, i) => a + i.unitPrice * i.quantity, 0);
 
-  const checkout = async () => {
-    try {
-      const addrs = await api.me.addresses.list();
-      const def = addrs.find((a: Address) => a.isDefault) || addrs[0];
-      if (!def) {
-        Alert.alert('No address', 'Add a delivery address in Profile first.');
-        return;
-      }
-      const order = await api.orders.create({ addressId: def.id, fromCart: true });
-      await api.payment.verify({
-        razorpayOrderId: order.razorpayOrderId,
-        razorpayPaymentId: 'pay_mobile_' + Date.now(),
-        signature: 'dev'
-      });
-      await refresh();
-      Alert.alert('Payment successful!', 'Your order was placed.', [
-        { text: 'OK', onPress: () => nav.navigate('Root', { screen: 'Home' }) }
-      ]);
-    } catch (e) {
-      Alert.alert('Checkout failed', e instanceof ApiError ? e.message : (e as Error).message);
-    }
-  };
+  const checkout = () => nav.navigate('Checkout');
 
   if (!user) {
     return (

@@ -35,6 +35,12 @@ public class ProductVariant {
     @Column(name = "price_modifier", nullable = false, precision = 10, scale = 2)
     private BigDecimal priceModifier = BigDecimal.ZERO;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) createdAt = OffsetDateTime.now();
+    }
 }

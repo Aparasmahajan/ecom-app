@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [orderCount, setOrderCount] = useState(0);
   const [wishCount, setWishCount] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [editingAddr, setEditingAddr] = useState<Address | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -79,6 +80,17 @@ export default function ProfilePage() {
       toast('Failed to add: ' + (e instanceof ApiError ? e.message : (e as Error).message));
     }
   };
+  const saveEditAddr = async (data: Omit<Address, 'id'>) => {
+    if (!editingAddr) return;
+    try {
+      await api.me.addresses.update(editingAddr.id, data);
+      await load();
+      setEditingAddr(null);
+      toast('Address updated');
+    } catch (e) {
+      toast('Failed to update: ' + (e instanceof ApiError ? e.message : (e as Error).message));
+    }
+  };
 
   const initial = (user.name || user.email)[0]?.toUpperCase() || 'U';
 
@@ -132,6 +144,7 @@ export default function ProfilePage() {
                 {!a.isDefault && (
                   <button className="btn small secondary" onClick={() => setDefault(a.id)}>Default</button>
                 )}
+                <button className="btn small secondary" onClick={() => setEditingAddr(a)}>Edit</button>
                 <button className="btn small danger" onClick={() => deleteAddr(a.id)}>Delete</button>
               </div>
             </div>
@@ -170,27 +183,33 @@ export default function ProfilePage() {
       )}
 
       {showModal && (
-        <AddressModal onCancel={() => setShowModal(false)} onSave={addAddress} toast={toast} />
+        <AddressModal title="Add Address" onCancel={() => setShowModal(false)} onSave={addAddress} toast={toast} />
+      )}
+
+      {editingAddr && (
+        <AddressModal title="Edit Address" initial={editingAddr} onCancel={() => setEditingAddr(null)} onSave={saveEditAddr} toast={toast} />
       )}
     </>
   );
 }
 
 function AddressModal({
-  onCancel, onSave, toast
+  title, initial, onCancel, onSave, toast
 }: {
+  title: string;
+  initial?: Address;
   onCancel: () => void;
   onSave: (a: Omit<Address, 'id'>) => Promise<void>;
   toast: (m: string) => void;
 }) {
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [line1, setLine1] = useState('');
-  const [line2, setLine2] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [pincode, setPincode] = useState('');
-  const [isDefault, setIsDefault] = useState(false);
+  const [fullName, setFullName] = useState(initial?.fullName || '');
+  const [phone, setPhone] = useState(initial?.phone || '');
+  const [line1, setLine1] = useState(initial?.line1 || '');
+  const [line2, setLine2] = useState(initial?.line2 || '');
+  const [city, setCity] = useState(initial?.city || '');
+  const [state, setState] = useState(initial?.state || '');
+  const [pincode, setPincode] = useState(initial?.pincode || '');
+  const [isDefault, setIsDefault] = useState(initial?.isDefault || false);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
@@ -212,7 +231,7 @@ function AddressModal({
   return (
     <div className="modal-bg" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>Add Address</h3>
+        <h3>{title}</h3>
         <label style={{ fontSize: 12, color: 'var(--muted)' }}>Full Name</label>{input(fullName, setFullName)}
         <label style={{ fontSize: 12, color: 'var(--muted)' }}>Phone (10-digit)</label>{input(phone, setPhone)}
         <label style={{ fontSize: 12, color: 'var(--muted)' }}>Address Line 1</label>{input(line1, setLine1)}
