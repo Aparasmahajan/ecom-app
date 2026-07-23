@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import Screen from '../components/Screen';
 import ProductCard from '../components/ProductCard';
 import ComboCard from '../components/ComboCard';
-import BannerCard from '../components/BannerCard';
+import BannerCarousel from '../components/BannerCarousel';
 import Brand from '../components/Brand';
 import Button from '../components/Button';
 import { api, Banner, Category, Combo, Product } from '../lib/api';
@@ -45,19 +45,19 @@ export default function HomeScreen() {
     <Screen>
       <View style={styles.headerRow}><Brand /></View>
 
-      <ImageBackground source={{ uri: HERO_IMAGE }} imageStyle={styles.heroImg} style={styles.hero}>
-        <View style={styles.heroOverlay} />
-        <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>NEW{'\n'}SEASON{'\n'}COLLECTION</Text>
-          <Text style={styles.heroSub}>Elevate Your Style</Text>
-          <Button title="SHOP NOW" onPress={() => navigation.navigate('Products', {})} style={{ alignSelf: 'flex-start', marginTop: 8 }} />
-        </View>
-      </ImageBackground>
-
-      {banners.length > 0 && (
-        <View style={{ marginBottom: 8 }}>
-          {banners.map(b => <BannerCard key={b.id} banner={b} />)}
-        </View>
+      {/* Admin-managed banners are the landing hero. The static hero below is a
+          fallback only when no banners are configured (avoids a duplicate hero). */}
+      {banners.length > 0 ? (
+        <BannerCarousel banners={banners} />
+      ) : (
+        <ImageBackground source={{ uri: HERO_IMAGE }} imageStyle={styles.heroImg} style={styles.hero}>
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroContent}>
+            <Text style={styles.heroTitle}>NEW{'\n'}SEASON{'\n'}COLLECTION</Text>
+            <Text style={styles.heroSub}>Elevate Your Style</Text>
+            <Button title="SHOP NOW" onPress={() => navigation.navigate('Products', {})} style={{ alignSelf: 'flex-start', marginTop: 8 }} />
+          </View>
+        </ImageBackground>
       )}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>

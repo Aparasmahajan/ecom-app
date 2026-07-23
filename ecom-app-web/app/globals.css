@@ -693,6 +693,21 @@ tr:last-child td { border-bottom: none; }
 
 /* ---------- Storefront: landing-page banners ---------- */
 .banner-strip { display: flex; flex-direction: column; gap: 16px; margin-bottom: 8px; }
+
+/* Rolling carousel — one banner visible, auto-advancing. */
+.banner-carousel { position: relative; overflow: hidden; border-radius: 20px; }
+.banner-track { display: flex; transition: transform .55s cubic-bezier(.4,0,.2,1); }
+.banner-slide { flex: 0 0 100%; min-width: 100%; }
+.banner-slide .pbanner { border-radius: 0; border-left: none; border-right: none; }
+.banner-dots {
+  position: absolute; bottom: 12px; left: 0; right: 0;
+  display: flex; gap: 6px; justify-content: center; z-index: 3;
+}
+.banner-dots button {
+  width: 8px; height: 8px; padding: 0; border: none; cursor: pointer;
+  border-radius: 999px; background: rgba(255,255,255,0.45); transition: all .2s;
+}
+.banner-dots button.active { background: var(--accent); width: 22px; }
 .pbanner {
   position: relative; overflow: hidden; border-radius: 20px;
   border: 1px solid var(--border); min-height: 220px;

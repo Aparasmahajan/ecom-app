@@ -6,7 +6,9 @@ Project context for AI assistants and developers working on this codebase.
 
 ## 1. Project Overview
 
-A cross-platform e-commerce shop for **URBAN CLOTHING CO** — a generic clothing brand covering Shirts, T-Shirts, Jeans, Hoodies, and Co-ord Sets. Customers browse products, select from admin-defined sizes, add an optional order note, pay online, and track orders. An **ADMIN** manages the catalog, "hot seller" listings, sizes/stock, product ratings and orders. A single **SUPER_ADMIN** additionally manages other admin accounts.
+A cross-platform e-commerce shop for **URBAN CLOTHING CO** — a generic clothing brand covering Shirts, T-Shirts, Jeans, Hoodies, Co-ord Sets, **Shoes**, and **Girls Outfit**. Customers browse products, select from admin-defined sizes, add an optional order note, pay online, and track orders. An **ADMIN** manages the catalog, "hot seller" listings, sizes/stock, storefront **listing** (visibility + advertised quantity), **landing-page banners**, product ratings and orders (with a **kanban board** view). A single **SUPER_ADMIN** additionally manages other admin accounts.
+
+> **Update (mobile admin, RBAC):** the admin surface — originally web-only — is now **also available in the mobile app** behind an always-visible **Admin tab**, gated by role (ADMIN vs SUPER_ADMIN). See §3, §6, and §20. The store still targets customers first; admin sign-in is required to see any admin screen.
 
 **Platforms:** Android + iOS (React Native / Expo) **and** the web storefront (Next.js). Both talk to the same Spring Boot REST API.
 
@@ -43,7 +45,7 @@ Run the backend + DB with `docker compose up --build`. Deploy `ecom-app-web` as 
 
 | Layer | Choice | Notes |
 |-------|--------|-------|
-| Mobile app | React Native via **Expo (dev build / prebuild)** | Customer-facing only — no admin surface exposed on the store-facing Android build |
+| Mobile app | React Native via **Expo (dev build / prebuild)** | Customer + admin. An **Admin tab** (RBAC) surfaces the full admin panel to ADMIN / SUPER_ADMIN accounts; customers only ever see a login prompt there. |
 | Web app | **Next.js 14** (App Router, TypeScript) | Serves the storefront **and** the admin panel; talks to the same REST API |
 | Backend | Spring Boot 3 (Java 17) | REST API. Package layout in §4 |
 | Database | **PostgreSQL 16** | Chosen for search (`tsvector` + `pg_trgm`). Managed via **Flyway** migrations |
@@ -89,17 +91,19 @@ Run the backend + DB with `docker compose up --build`. Deploy `ecom-app-web` as 
 - Order history + order detail
 - Profile — user info, **address book (multiple addresses)**, stats (Orders / Wishlist / Addresses)
 - Auth — email → 6-digit OTP → JWT
-- **No admin panel** — admin is web-only. The mobile app never exposes an admin login.
+- **Admin tab (RBAC)** — an always-visible **🛠️ Admin** tab in the bottom nav. For non-admins it shows an admin login; for ADMIN / SUPER_ADMIN it shows a tile menu opening the full admin panel (Orders w/ kanban, Products, Inventory, Listing, Combos, Banners, and — SUPER_ADMIN only — Admins). Screens live under `mobile/src/screens/admin/`. See §20.
 
 **Screen map (web — customer + admin) — all runs in localStorage, no backend**
 - All customer screens above (as pages under `/`, `/products`, `/cart`, `/orders`, etc.)
 - **Home + Categories** each end with a **"Curated Combos"** footer section (see §18) listing all currently-active combos.
 - **Hidden admin entry**: long-press the version number in the footer for 1.5s, or triple-click the logo → `/admin/login`.
-- **Admin panel** at `/admin` — five tabs:
-  - **Orders** — search / filter by status / sort / open detail drawer / change status / add tracking / add admin notes / cancel / refund
+- **Admin panel** at `/admin` — seven tabs (all tables are responsive: horizontal-scroll wrapper + sticky first column on mobile):
+  - **Orders** — search / filter by status / sort / open detail drawer / change status / add tracking / add admin notes / cancel / refund, **plus a List ⇄ Board (kanban) toggle** (columns New/To-do → In Progress → Shipped → Delivered → Closed with per-card "advance") (see §20)
   - **Products** — CRUD, toggle hot seller, override rating
   - **Inventory** — flat variant × stock table with in-place stock edit, low-stock / out-of-stock filters, search (see §19)
+  - **Listing** — per-product storefront visibility (show/hide) + advertised "list quantity", independent of real stock (see §19/§20)
   - **Combos** — CRUD curated bundles (name, image, product picker, combo price, active toggle) (see §18)
+  - **Banners** — landing-page banner manager: templates, image, price, count-on-home, reorder, show/hide (see §20)
   - **Admins** — SUPER_ADMIN only: create / list / enable-disable / reset-password / delete admin accounts
 
 ---
@@ -289,9 +293,9 @@ Rules:
 - **Up to `ADMIN_MAX_COUNT` admins** (default 100, was 3 originally). Enforced in `AdminUserController.create`.
 - The SUPER_ADMIN cannot be deleted or disabled through any API. No one can delete or disable themselves.
 
-### Admin access UX — hidden entry
-- Admin is **web-only**. The mobile app does not expose an admin login (no long-press toggle, no admin route).
-- On the web, reveal the admin login by **long-pressing the version number in the footer for 1.5s**, or triple-clicking the logo — both route to `/admin/login`.
+### Admin access UX
+- **Web:** reveal the admin login by **long-pressing the "URBAN CLOTHING CO" wordmark in the footer for 1.5s**, or **triple-clicking the logo** — both route to `/admin/login`. (Both gestures are implemented — footer in `Footer.tsx`, logo in `Header.tsx`.)
+- **Mobile:** an always-visible **🛠️ Admin tab** in the bottom nav opens an admin login for non-admins, or the admin panel for ADMIN / SUPER_ADMIN. This reverses the original "mobile is customer-only" decision — done at the product owner's request (see §20). Server-side RBAC (`@PreAuthorize` + fresh DB role check) is unchanged and remains the real protection.
 
 > WARNING: Never gate admin power on the hidden gesture alone. Security-through-obscurity is unsafe. The real protection is the two-layer server-side check described in §14.
 
@@ -408,7 +412,7 @@ WEB_PORT=3000
 4. Database: **PostgreSQL** with Flyway migrations (best for search — full-text + `pg_trgm` fuzzy matching).
 5. Checkout: **login required** (no guest checkout).
 6. Framework: **Expo dev build** (mobile) + **Next.js 14 App Router** (web). Same REST API backs both.
-7. Roles: `USER` < `ADMIN` (many, capped) < `SUPER_ADMIN` (exactly one). Mobile is customer-only.
+7. Roles: `USER` < `ADMIN` (many, capped) < `SUPER_ADMIN` (exactly one). ~~Mobile is customer-only.~~ **Superseded:** mobile now exposes the admin panel via an Admin tab, gated by role (§20).
 8. Admin management: only SUPER_ADMIN can create / disable / delete other admins. SUPER_ADMIN cannot be demoted or deleted through the API.
 9. Order lifecycle includes `REFUNDED` distinct from `CANCELLED`. Orders carry a `trackingNumber`, `adminNotes` (private), and `cancelReason` (customer-visible).
 10. All three third-party integrations (Brevo / Cloudinary / Razorpay) are **optional** — dev-mode fallbacks let the whole flow run without any external accounts.
@@ -532,6 +536,8 @@ docker compose up --build
 - V2 — seed 5 categories + 15 products with Unsplash image URLs; auto-derive variants per category.
 - V3 — role check constraint `CHECK (role IN ('USER','ADMIN','SUPER_ADMIN'))` + partial unique index enforcing at most one SUPER_ADMIN.
 - V4 — order fields: `tracking_number`, `admin_notes NOT NULL DEFAULT ''`, `cancel_reason`; `trg_orders_updated_at` trigger to auto-bump `updated_at`.
+- V5 — `combos` + `combo_products` join table; seeds 3 combos (see §18).
+- V6 — **Shoes** + **Girls Outfit** categories & products; `products.listed` + `products.list_quantity` columns (storefront listing, see §19/§20); `banners` table + 3 seeded banners; `app_settings` key/value table seeded with `home_banner_count=3` (see §20).
 
 ---
 
@@ -692,3 +698,39 @@ Admins can manage stock at the **variant** level from a dedicated **Inventory** 
 ### 19.3 Where stock is decremented automatically
 - On `POST /orders` — every ordered variant's stock is reduced by the ordered quantity, inside the same transaction that creates the order. Overselling is guarded by a `stock >= quantity` pre-check that returns a 400 with the product name if it fails.
 - Refunds do **not** automatically restock (admin decision — restock manually via Inventory if needed).
+
+---
+
+## 20. Recent additions (Shoes/Girls, Listing, Banners, Order kanban, Mobile admin)
+
+This section records feature work added after the original spec, at the product owner's request.
+
+### 20.1 New sections — Shoes + Girls Outfit
+- Two new categories: `shoes` (numeric sizes 6–10, UNISEX/ADULT) and `girls` ("Girls Outfit", age sizes 2-3Y…8-9Y, WOMEN/KIDS), each with seeded products.
+- **Web demo:** seeded in `ecom-app-web/lib/api.ts` (localStorage; the `SEEDED` key was bumped to `cw_seeded_static_v2` so returning browsers auto-reseed). Photo pools added to `ecom-app-web/lib/images.ts`.
+- **Backend + mobile:** seeded in Flyway **V6**. Photo pools added to `mobile/src/lib/images.ts`. They appear automatically (data-driven) in the home chip strip, Categories, and product filters on both surfaces.
+
+### 20.2 Inventory vs Listing (two management views)
+- **Inventory** = internal, real per-variant `stock` (unchanged; edited via `PUT /admin/variants/{id}`).
+- **Listing** = storefront presentation, decoupled from stock: `products.listed` (show/hide on the storefront) and `products.list_quantity` (units the admin *advertises*, independent of real stock — lets items be listed "outside inventory").
+- Public `/products` (and `catalog.products` on web) **filter out** `listed = false`. Product detail still resolves by id.
+- Admin surface: web `ecom-app-web/app/admin/AdminListing.tsx`, mobile `mobile/src/screens/admin/AdminListing.tsx`. Backend: `GET /admin/products` (all, incl. unlisted) + `PUT /admin/products/{id}/listing { listed?, listQuantity? }`. Web (localStorage) exposes `api.admin.listing.{list,setListed,setListQuantity}`.
+
+### 20.3 Landing-page Banners + settings
+- A **banner** = `{ template (hero|sale|split|minimal), title, subtitle, imageUrl, price, ctaText, ctaHref, active, position }`. Rendered as a **rolling/auto-rotating carousel** at the top of Home (web `components/BannerStrip.tsx` → `PromoBanner`; mobile `components/BannerCarousel.tsx` → `BannerCard`). Dots + ~4.5s auto-advance.
+- Home shows up to `home_banner_count` active banners (a global setting).
+- API — public: `GET /banners` (active, ordered, limited by count), `GET /settings` → `{ homeBannerCount }`. Admin: `GET/POST/PUT/DELETE /admin/banners`, `PUT /admin/settings { homeBannerCount }`. Backend: `catalog/Banner*.java`, `settings/*` package, V6 tables `banners` + `app_settings`. Web (localStorage): `api.catalog.banners`, `api.admin.banners.*`, `api.admin.settings.*`.
+- Admin UI: web `app/admin/AdminBanners.tsx` (template picker + live preview), mobile `screens/admin/AdminBanners.tsx`.
+
+### 20.4 Order kanban board
+- The admin Orders screen gained a **List ⇄ Board** toggle. The board groups the existing statuses into columns (New/To-do = CREATED+PAID, In Progress = PROCESSING, Shipped, Delivered, Closed = CANCELLED+REFUNDED) with a per-card "advance to next status" action. **The underlying status model is unchanged** — this is a view, not new statuses. Web `AdminOrders.tsx`, mobile `screens/admin/AdminOrders.tsx`.
+
+### 20.5 Mobile admin + RBAC (reverses the "mobile is customer-only" decision)
+- The mobile app now has an always-visible **🛠️ Admin tab** (`mobile/src/navigation/Tabs.tsx`). Entry component `screens/admin/AdminScreen.tsx`: shows an admin login for non-admins, or a tile menu for ADMIN / SUPER_ADMIN.
+- Full panel ported to React Native under `mobile/src/screens/admin/`: `AdminOrders`, `AdminProducts`, `AdminInventory`, `AdminListing`, `AdminCombos`, `AdminBanners`, `AdminAdmins` (SUPER_ADMIN-only). Shared UI helpers in `screens/admin/ui.tsx`. Sub-screens registered in `App.tsx`.
+- Mobile REST client (`mobile/src/lib/api.ts`) gained `catalog.banners/settings` and the full `admin.{products,variants,orders,combos,banners,settings,admins}` surface.
+- **RBAC unchanged server-side.** The Admin tab is a convenience surface; every admin call is still gated by the URL rule + DB-fresh `@PreAuthorize` (§14). A regular USER who taps the tab only ever sees a login prompt.
+- Trade-off: this puts admin login on the store-facing build (contrary to §6's original "security-through-separation"). Accepted for this project as a demo/ops convenience; the real protection remains the server-side checks.
+
+### 20.6 Admin responsiveness (web)
+- All admin tables (Products / Inventory / Listing / Combos / Admins) are wrapped in `.admin-table-wrap` (horizontal scroll + sticky first column) so they no longer overflow on mobile. The admin **tab bar wraps** to multiple rows so no tab (notably the SUPER_ADMIN-only **★ Admins**) is ever pushed off-screen.

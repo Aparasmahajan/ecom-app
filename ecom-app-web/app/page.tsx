@@ -43,19 +43,20 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="hero">
-        <div className="hero-img" style={{ backgroundImage: `url(${HERO_IMAGE})` }} />
-        <div className="hero-content">
-          <h1>NEW<br />SEASON<br />COLLECTION</h1>
-          <p>Elevate Your Style</p>
-          <Link href="/products" className="btn">SHOP NOW</Link>
-        </div>
-      </div>
-
-      {/* Admin-curated landing banners (managed in Admin → Banners) */}
-      {banners.length > 0 && (
+      {/* Admin-curated banners are the landing hero (managed in Admin → Banners).
+          The static hero is a fallback only when no banners are configured. */}
+      {banners.length > 0 ? (
         <div style={{ marginBottom: 24 }}>
           <BannerStrip banners={banners} />
+        </div>
+      ) : (
+        <div className="hero">
+          <div className="hero-img" style={{ backgroundImage: `url(${HERO_IMAGE})` }} />
+          <div className="hero-content">
+            <h1>NEW<br />SEASON<br />COLLECTION</h1>
+            <p>Elevate Your Style</p>
+            <Link href="/products" className="btn">SHOP NOW</Link>
+          </div>
         </div>
       )}
 
