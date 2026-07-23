@@ -6,6 +6,8 @@ import { useApp } from '@/lib/context';
 import AdminProducts from './AdminProducts';
 import AdminOrders from './AdminOrders';
 import AdminAdmins from './AdminAdmins';
+import AdminCombos from './AdminCombos';
+import AdminInventory from './AdminInventory';
 
 function AdminDashboard() {
   const { user, ready } = useApp();
@@ -41,12 +43,16 @@ function AdminDashboard() {
       <div className="admin-tabs">
         <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>Orders</button>
         <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>Products</button>
+        <button className={tab === 'inventory' ? 'active' : ''} onClick={() => setTab('inventory')}>Inventory</button>
+        <button className={tab === 'combos' ? 'active' : ''} onClick={() => setTab('combos')}>Combos</button>
         {isSuper && (
           <button className={tab === 'admins' ? 'active' : ''} onClick={() => setTab('admins')}>Admins</button>
         )}
       </div>
       {tab === 'orders' && <AdminOrders />}
       {tab === 'products' && <AdminProducts />}
+      {tab === 'inventory' && <AdminInventory />}
+      {tab === 'combos' && <AdminCombos />}
       {tab === 'admins' && isSuper && <AdminAdmins />}
       {tab === 'admins' && !isSuper && (
         <div className="empty">

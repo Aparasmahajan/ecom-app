@@ -3,22 +3,29 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useApp } from '@/lib/context';
-import { api, ApiError, Category, Product } from '@/lib/api';
+import { api, ApiError, Category, Combo, Product } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
+import ComboCard from '@/components/ComboCard';
 import { HERO_IMAGE, chipImage } from '@/lib/images';
 
 export default function HomePage() {
   const { toast } = useApp();
   const [products, setProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
+  const [combos, setCombos] = useState<Combo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [ps, cs] = await Promise.all([api.catalog.products({}), api.catalog.categories()]);
+        const [ps, cs, kb] = await Promise.all([
+          api.catalog.products({}),
+          api.catalog.categories(),
+          api.catalog.combos()
+        ]);
         setProducts(ps);
         setCats(cs);
+        setCombos(kb);
       } catch (e) {
         toast('Failed to load: ' + (e instanceof ApiError ? e.message : (e as Error).message));
       } finally {
@@ -68,6 +75,20 @@ export default function HomePage() {
       {loading ? null : arrivals.length
         ? <div className="grid">{arrivals.map(p => <ProductCard key={p.id} product={p} />)}</div>
         : <p className="empty">No arrivals yet.</p>}
+
+      {/* Combos — always at the bottom (footer of home + categories). Admin
+          curates these; each combo is a discounted bundle of products. */}
+      {combos.length > 0 && (
+        <>
+          <div className="section-title">
+            <h2>Curated Combos 🎁</h2>
+            <span style={{ color: 'var(--muted)', fontSize: 13 }}>Bundle & save</span>
+          </div>
+          <div className="combo-grid">
+            {combos.map(c => <ComboCard key={c.id} combo={c} />)}
+          </div>
+        </>
+      )}
     </>
   );
 }
