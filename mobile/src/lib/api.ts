@@ -121,6 +121,9 @@ export interface Combo {
   productIds: string[]; comboPrice: number; isActive: boolean;
   createdAt: string;
 }
+export interface Review {
+  id: string; userName: string; stars: number; comment: string; createdAt: string;
+}
 
 export const api = {
   auth: {
@@ -179,5 +182,10 @@ export const api = {
   },
   payment: {
     verify: (body: any) => request<Order>('POST', '/payment/verify', body)
+  },
+  reviews: {
+    list:   (productId: string) => request<Review[]>('GET', `/products/${productId}/reviews`),
+    create: (productId: string, stars: number, comment: string) =>
+      request<Review>('POST', `/products/${productId}/reviews`, { stars, comment })
   }
 };
