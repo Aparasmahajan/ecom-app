@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import Screen from '../components/Screen';
@@ -9,8 +9,11 @@ import { statusStyle } from '../lib/status';
 export default function OrderDetailScreen() {
   const route = useRoute<any>();
   const id: string = route.params?.id;
+  /** True when we arrived here right after a successful checkout. */
+  const justPaid: boolean = !!route.params?.justPaid;
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSuccess, setShowSuccess] = useState(justPaid);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -21,6 +24,14 @@ export default function OrderDetailScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  // Auto-hide the "payment successful" confirmation after a few seconds so
+  // it doesn't stick around forever if the user lingers on the order.
+  useEffect(() => {
+    if (!showSuccess) return;
+    const t = setTimeout(() => setShowSuccess(false), 4500);
+    return () => clearTimeout(t);
+  }, [showSuccess]);
+
   if (loading) return <Screen><ActivityIndicator color={colors.accent} style={{ marginTop: 60 }} /></Screen>;
   if (!order) return <Screen><Text style={styles.empty}>Order not found.</Text></Screen>;
 
@@ -29,6 +40,15 @@ export default function OrderDetailScreen() {
 
   return (
     <Screen>
+      {showSuccess && (
+        <View style={styles.successBanner}>
+          <Text style={styles.successIcon}>✓</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.successTitle}>Payment successful!</Text>
+            <Text style={styles.successSub}>Your order has been placed. We'll ship it shortly.</Text>
+          </View>
+        </View>
+      )}
       <View style={styles.headerRow}>
         <Text style={styles.h1}>#{order.id.slice(-6).toUpperCase()}</Text>
         <View style={[styles.pill, { backgroundColor: st.bg }]}>
@@ -98,5 +118,19 @@ const styles = StyleSheet.create({
   rLabel: { color: colors.muted, fontSize: 13 },
   rVal: { color: colors.text, fontSize: 13 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 10 },
-  empty: { color: colors.muted, textAlign: 'center', marginTop: 40 }
+  empty: { color: colors.muted, textAlign: 'center', marginTop: 40 },
+  successBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderWidth: 1, borderColor: 'rgba(34, 197, 94, 0.4)',
+    borderRadius: radii.lg, padding: 14, marginBottom: 14
+  },
+  successIcon: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#22c55e', color: colors.black,
+    fontSize: 18, fontWeight: '900',
+    textAlign: 'center', lineHeight: 32
+  },
+  successTitle: { color: '#22c55e', fontWeight: '800', fontSize: 14 },
+  successSub:   { color: colors.muted, fontSize: 12, marginTop: 2 }
 });

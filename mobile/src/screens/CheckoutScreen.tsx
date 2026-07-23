@@ -45,15 +45,22 @@ export default function CheckoutScreen() {
     setPlacing(true);
     try {
       const order = await api.orders.create({ addressId: selected, fromCart: true });
+      const razorpayOrderId = order.razorpayOrderId;
+      if (!razorpayOrderId) throw new ApiError(500, 'no_payment_id', 'Payment id missing from order');
       await api.payment.verify({
-        razorpayOrderId: order.razorpayOrderId,
+        razorpayOrderId,
         razorpayPaymentId: 'pay_mobile_' + Date.now(),
         signature: 'dev'
       });
       await refresh();
-      Alert.alert('Payment successful!', 'Your order was placed.', [
-        { text: 'View order', onPress: () => nav.replace('OrderDetail', { id: order.id }) }
-      ]);
+      // Clear local cart state so a re-render of this screen doesn't briefly
+      // show the pre-payment items before navigation completes.
+      setCart([]);
+      // Navigate directly — Alert.alert's onPress button callback does not
+      // reliably fire on Expo Web (it becomes a plain window.alert), which
+      // would strand the user on the checkout screen with an empty cart.
+      // `replace` (not `navigate`) so back-button doesn't return to checkout.
+      nav.replace('OrderDetail', { id: order.id, justPaid: true });
     } catch (e) {
       Alert.alert('Checkout failed', e instanceof ApiError ? e.message : (e as Error).message);
     } finally { setPlacing(false); }
